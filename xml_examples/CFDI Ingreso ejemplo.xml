@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4" xmlns:xsi="http://w3.org" xsi:schemaLocation="http://www.sat.gob.mx/cfd/4 http://sat.gob.mx" Version="4.0" Serie="A" Folio="100" Fecha="2026-07-01T10:00:00" SubTotal="1000.00" Moneda="MXN" Total="1160.00" TipoDeComprobante="I" Exportacion="01" MetodoPago="PPD" FormaPago="99" LugarExpedicion="06000">
+  <cfdi:Emisor Rfc="XAXX010101000" Nombre="EMISORA EJEMPLO SA DE CV" RegimenFiscal="601"/>
+  <cfdi:Receptor Rfc="XEXX010101000" Nombre="CLIENTE EJEMPLO SA" DomicilioFiscalReceptor="06500" RegimenFiscalReceptor="601" UsoCFDI="G03"/>
+  <cfdi:Conceptos>
+    <cfdi:Concepto ClaveProdServ="84111506" Cantidad="1.00" ClaveUnidad="E48" Descripcion="Servicios de ejemplo" ValorUnitario="1000.00" Importe="1000.00" ObjetoImp="02">
+      <cfdi:Impuestos>
+        <cfdi:Traslados>
+          <cfdi:Traslado Base="1000.00" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="160.00"/>
+        </cfdi:Traslados>
+      </cfdi:Impuestos>
+    </cfdi:Concepto>
+  </cfdi:Conceptos>
+  <cfdi:Impuestos TotalImpuestosTrasladados="160.00">
+    <cfdi:Traslados>
+      <cfdi:Traslado Base="1000.00" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="160.00"/>
+    </cfdi:Traslados>
+  </cfdi:Impuestos>
+</cfdi:Comprobante>

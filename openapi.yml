@@ -1,0 +1,576 @@
+openapi: "3.0.3"
+info:
+  title: CFDI 4.0 API
+  description: |
+    Microservicio para generación y timbrado de CFDI 4.0 (SAT México).
+    Soporta comprobantes tipo Ingreso (I) y Pago (P) con complemento Pagos 2.0.
+  version: "1.0.0"
+servers:
+  - url: http://localhost:8090
+    description: Local development
+
+paths:
+  /make-cfdi:
+    post:
+      summary: Generar y opcionalmente timbrar un CFDI 4.0
+      description: |
+        Construye el XML CFDI 4.0 a partir de los datos JSON.
+        Si `timbrar: true` y las variables de entorno PAC están configuradas, envía el XML al PAC para timbrado vía SOAP.
+      operationId: makeCFDI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CFDIRequest"
+            examples:
+              ingreso:
+                summary: CFDI Ingreso (I)
+                value:
+                  Version: "4.0"
+                  Serie: A
+                  Folio: "100"
+                  Fecha: "2026-07-01T10:00:00"
+                  SubTotal: "1000.00"
+                  Moneda: MXN
+                  Total: "1160.00"
+                  TipoDeComprobante: I
+                  Exportacion: "01"
+                  MetodoPago: PPD
+                  FormaPago: "99"
+                  LugarExpedicion: "06000"
+                  Emisor:
+                    Rfc: XAXX010101000
+                    Nombre: EMISORA EJEMPLO SA DE CV
+                    RegimenFiscal: "601"
+                  Receptor:
+                    Rfc: XEXX010101000
+                    Nombre: CLIENTE EJEMPLO SA
+                    DomicilioFiscalReceptor: "06500"
+                    RegimenFiscalReceptor: "601"
+                    UsoCFDI: G03
+                  Conceptos:
+                    - ClaveProdServ: "84111506"
+                      Cantidad: "1.00"
+                      ClaveUnidad: E48
+                      Descripcion: Servicios de ejemplo
+                      ValorUnitario: "1000.00"
+                      Importe: "1000.00"
+                      ObjetoImp: "02"
+                      Impuestos:
+                        Traslados:
+                          - Base: "1000.00"
+                            Impuesto: "002"
+                            TipoFactor: Tasa
+                            TasaOCuota: "0.160000"
+                            Importe: "160.00"
+                  timbrar: false
+              pago:
+                summary: CFDI Pago (P) con Pagos 2.0
+                value:
+                  Version: "4.0"
+                  Serie: P
+                  Folio: "50"
+                  Fecha: "2026-07-15T14:30:00"
+                  SubTotal: "0"
+                  Moneda: MXN
+                  Total: "0"
+                  TipoDeComprobante: P
+                  Exportacion: "01"
+                  LugarExpedicion: "06000"
+                  Emisor:
+                    Rfc: XAXX010101000
+                    Nombre: EMISORA EJEMPLO SA DE CV
+                    RegimenFiscal: "601"
+                  Receptor:
+                    Rfc: XEXX010101000
+                    Nombre: CLIENTE EJEMPLO SA
+                    DomicilioFiscalReceptor: "06500"
+                    RegimenFiscalReceptor: "601"
+                    UsoCFDI: CP01
+                  Conceptos:
+                    - ClaveProdServ: "84111506"
+                      Cantidad: "1.00"
+                      ClaveUnidad: ACT
+                      Descripcion: Pago
+                      ValorUnitario: "0"
+                      Importe: "0"
+                      ObjetoImp: "01"
+                  Complemento:
+                    Pagos:
+                      Version: "2.0"
+                      Totales:
+                        TotalTrasladosBaseIVA16: "1000.00"
+                        TotalTrasladosImpuestoIVA16: "160.00"
+                        MontoTotalPagos: "1160.00"
+                      Pago:
+                        - FechaPago: "2026-07-15T14:25:00"
+                          FormaDePagoP: "03"
+                          MonedaP: MXN
+                          Monto: "1160.00"
+                          DoctoRelacionado:
+                            - IdDocumento: UUID-DE-LA-FACTURA-ORIGINAL-PPD
+                              Serie: A
+                              Folio: "100"
+                              MonedaDR: MXN
+                              EquivMonedaDR: "1"
+                              NumParcialidad: "1"
+                              ImpSaldoAnt: "1160.00"
+                              ImpPagado: "1160.00"
+                              ImpSaldoInsoluto: "0.00"
+                              ObjetoImpDR: "02"
+                              ImpuestosDR:
+                                TrasladosDR:
+                                  - BaseDR: "1000.00"
+                                    ImpuestoDR: "002"
+                                    TipoFactorDR: Tasa
+                                    TasaOCuotaDR: "0.160000"
+                                    ImporteDR: "160.00"
+                  timbrar: false
+      responses:
+        "200":
+          description: |
+            Retorna JSON con el XML CFDI 4.0 generado.
+            Si `timbrar: true` y PAC responde con éxito, `pac_response` contiene las URLs de descarga.
+            Si `timbrar: false` (o ausente), `pac_response` es `null`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PACResponse"
+              example:
+                success: true
+                xml: '<?xml version="1.0" encoding="UTF-8"?><cfdi:Comprobante .../>'
+                pac_response: "SUCCESS:https://example.com/cfdi.xml,https://example.com/cfdi.pdf"
+        "400":
+          description: |
+            Error de validación (campos inválidos o faltantes), o `timbrar: true` sin PAC configurado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+        "500":
+          description: Error del PAC o interno
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PACErrorResponse"
+
+components:
+  schemas:
+    CFDIRequest:
+      type: object
+      required:
+        - Version
+        - Serie
+        - Folio
+        - Fecha
+        - TipoDeComprobante
+        - Exportacion
+        - LugarExpedicion
+        - Emisor
+        - Receptor
+        - Conceptos
+      properties:
+        timbrar:
+          type: boolean
+          description: Enviar al PAC para timbrado (requiere PAC_URL, PAC_USERNAME, PAC_PASSWORD configurados)
+          default: false
+          example: false
+        Version:
+          type: string
+          description: Versión del CFDI (4.0)
+          example: "4.0"
+        Serie:
+          type: string
+          description: Serie del comprobante
+          example: A
+        Folio:
+          type: string
+          description: Folio del comprobante
+          example: "100"
+        Fecha:
+          type: string
+          description: Fecha y hora de emisión (ISO 8601)
+          example: "2026-07-01T10:00:00"
+        SubTotal:
+          type: string
+          description: Subtotal del comprobante (requerido para I)
+          example: "1000.00"
+        Moneda:
+          type: string
+          description: Moneda (requerido para I)
+          example: MXN
+        Total:
+          type: string
+          description: Total del comprobante (requerido para I)
+          example: "1160.00"
+        TipoDeComprobante:
+          type: string
+          description: Tipo de comprobante
+          enum: [I, P]
+        Exportacion:
+          type: string
+          description: Clave de exportación (catálogo c_Exportacion)
+          example: "01"
+        MetodoPago:
+          type: string
+          description: Método de pago (requerido para I, catálogo c_MetodoPago)
+          example: PPD
+        FormaPago:
+          type: string
+          description: Forma de pago (requerido para I, catálogo c_FormaPago)
+          example: "99"
+        LugarExpedicion:
+          type: string
+          description: Código postal del lugar de expedición
+          example: "06000"
+        Emisor:
+          $ref: "#/components/schemas/Emisor"
+        Receptor:
+          $ref: "#/components/schemas/Receptor"
+        Conceptos:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/Concepto"
+        Complemento:
+          $ref: "#/components/schemas/Complemento"
+
+    Emisor:
+      type: object
+      required:
+        - Rfc
+        - Nombre
+        - RegimenFiscal
+      properties:
+        Rfc:
+          type: string
+          description: RFC del emisor
+          example: XAXX010101000
+        Nombre:
+          type: string
+          description: Nombre o razón social del emisor
+          example: EMISORA EJEMPLO SA DE CV
+        RegimenFiscal:
+          type: string
+          description: Régimen fiscal (catálogo c_RegimenFiscal)
+          example: "601"
+
+    Receptor:
+      type: object
+      required:
+        - Rfc
+        - Nombre
+        - DomicilioFiscalReceptor
+        - RegimenFiscalReceptor
+        - UsoCFDI
+      properties:
+        Rfc:
+          type: string
+          description: RFC del receptor
+          example: XEXX010101000
+        Nombre:
+          type: string
+          description: Nombre o razón social del receptor
+          example: CLIENTE EJEMPLO SA
+        DomicilioFiscalReceptor:
+          type: string
+          description: Código postal del domicilio fiscal del receptor
+          example: "06500"
+        RegimenFiscalReceptor:
+          type: string
+          description: Régimen fiscal del receptor (catálogo c_RegimenFiscal)
+          example: "601"
+        UsoCFDI:
+          type: string
+          description: Uso del CFDI (catálogo c_UsoCFDI). Para P debe ser CP01
+          example: G03
+
+    Concepto:
+      type: object
+      required:
+        - ClaveProdServ
+        - Cantidad
+        - ClaveUnidad
+        - Descripcion
+        - ValorUnitario
+        - Importe
+        - ObjetoImp
+      properties:
+        ClaveProdServ:
+          type: string
+          description: Clave del producto o servicio (catálogo c_ClaveProdServ)
+          example: "84111506"
+        Cantidad:
+          type: string
+          description: Cantidad
+          example: "1.00"
+        ClaveUnidad:
+          type: string
+          description: Clave de unidad (catálogo c_ClaveUnidad)
+          example: E48
+        Descripcion:
+          type: string
+          description: Descripción del concepto
+          example: Servicios de ejemplo
+        ValorUnitario:
+          type: string
+          description: Valor unitario
+          example: "1000.00"
+        Importe:
+          type: string
+          description: Importe total del concepto
+          example: "1000.00"
+        ObjetoImp:
+          type: string
+          description: Objeto del impuesto (01 No objeto, 02 Sí objeto, 03 Sí objeto impuesto trasladado, 04 Sí objeto impuesto retenido)
+          enum: ["01", "02", "03", "04"]
+        Impuestos:
+          $ref: "#/components/schemas/ConceptoImpuestos"
+
+    ConceptoImpuestos:
+      type: object
+      properties:
+        Traslados:
+          type: array
+          items:
+            $ref: "#/components/schemas/Traslado"
+        Retenciones:
+          type: array
+          items:
+            $ref: "#/components/schemas/Retencion"
+
+    Traslado:
+      type: object
+      required:
+        - Base
+        - Impuesto
+        - TipoFactor
+        - TasaOCuota
+        - Importe
+      properties:
+        Base:
+          type: string
+          description: Base del impuesto
+          example: "1000.00"
+        Impuesto:
+          type: string
+          description: Tipo de impuesto (002 IVA, 003 IEPS)
+          example: "002"
+        TipoFactor:
+          type: string
+          description: Tipo de factor (Tasa, Cuota, Exento)
+          example: Tasa
+        TasaOCuota:
+          type: string
+          description: Tasa o cuota del impuesto
+          example: "0.160000"
+        Importe:
+          type: string
+          description: Importe del impuesto
+          example: "160.00"
+
+    Retencion:
+      type: object
+      properties:
+        Base:
+          type: string
+        Impuesto:
+          type: string
+        TipoFactor:
+          type: string
+        TasaOCuota:
+          type: string
+        Importe:
+          type: string
+
+    Complemento:
+      type: object
+      properties:
+        Pagos:
+          $ref: "#/components/schemas/Pagos"
+
+    Pagos:
+      type: object
+      required:
+        - Version
+        - Totales
+        - Pago
+      properties:
+        Version:
+          type: string
+          description: Versión del complemento Pagos
+          example: "2.0"
+        Totales:
+          $ref: "#/components/schemas/Totales"
+        Pago:
+          type: array
+          items:
+            $ref: "#/components/schemas/Pago"
+
+    Totales:
+      type: object
+      properties:
+        TotalTrasladosBaseIVA16:
+          type: string
+          description: Suma de bases de IVA 16% de todos los pagos
+          example: "1000.00"
+        TotalTrasladosImpuestoIVA16:
+          type: string
+          description: Suma de impuestos IVA 16% de todos los pagos
+          example: "160.00"
+        MontoTotalPagos:
+          type: string
+          description: Monto total de los pagos
+          example: "1160.00"
+
+    Pago:
+      type: object
+      required:
+        - FechaPago
+        - FormaDePagoP
+        - MonedaP
+        - Monto
+      properties:
+        FechaPago:
+          type: string
+          description: Fecha y hora del pago
+          example: "2026-07-15T14:25:00"
+        FormaDePagoP:
+          type: string
+          description: Forma de pago (catálogo c_FormaPago)
+          example: "03"
+        MonedaP:
+          type: string
+          description: Moneda del pago
+          example: MXN
+        Monto:
+          type: string
+          description: Monto del pago
+          example: "1160.00"
+        DoctoRelacionado:
+          type: array
+          items:
+            $ref: "#/components/schemas/DoctoRelacionado"
+
+    DoctoRelacionado:
+      type: object
+      required:
+        - IdDocumento
+        - MonedaDR
+        - EquivMonedaDR
+        - NumParcialidad
+        - ImpSaldoAnt
+        - ImpPagado
+        - ImpSaldoInsoluto
+        - ObjetoImpDR
+      properties:
+        IdDocumento:
+          type: string
+          description: UUID del CFDI original que se está pagando
+          example: UUID-DE-LA-FACTURA-ORIGINAL-PPD
+        Serie:
+          type: string
+          description: Serie del CFDI original
+          example: A
+        Folio:
+          type: string
+          description: Folio del CFDI original
+          example: "100"
+        MonedaDR:
+          type: string
+          description: Moneda del documento relacionado
+          example: MXN
+        EquivMonedaDR:
+          type: string
+          description: Equivalencia monetaria
+          example: "1"
+        NumParcialidad:
+          type: string
+          description: Número de parcialidad
+          example: "1"
+        ImpSaldoAnt:
+          type: string
+          description: Saldo anterior del documento
+          example: "1160.00"
+        ImpPagado:
+          type: string
+          description: Monto pagado en esta parcialidad
+          example: "1160.00"
+        ImpSaldoInsoluto:
+          type: string
+          description: Saldo insoluto después del pago
+          example: "0.00"
+        ObjetoImpDR:
+          type: string
+          description: Objeto del impuesto del documento relacionado
+          example: "02"
+        ImpuestosDR:
+          $ref: "#/components/schemas/DoctoImpuestosDR"
+
+    DoctoImpuestosDR:
+      type: object
+      properties:
+        TrasladosDR:
+          type: array
+          items:
+            $ref: "#/components/schemas/TrasladoDR"
+
+    TrasladoDR:
+      type: object
+      properties:
+        BaseDR:
+          type: string
+          example: "1000.00"
+        ImpuestoDR:
+          type: string
+          example: "002"
+        TipoFactorDR:
+          type: string
+          example: Tasa
+        TasaOCuotaDR:
+          type: string
+          example: "0.160000"
+        ImporteDR:
+          type: string
+          example: "160.00"
+
+    PACResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Indica si la operación fue exitosa
+        xml:
+          type: string
+          description: XML CFDI 4.0 generado
+        pac_response:
+          type: string
+          nullable: true
+          description: Respuesta del PAC (texto útil). null si no se envió a timbrar
+
+    ValidationError:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Mensaje de error
+          example: validation failed
+        fields:
+          type: array
+          items:
+            type: string
+          description: Lista de campos con error
+          example:
+            - MetodoPago is required for I-type
+            - Total is required for I-type
+
+    PACErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Mensaje de error del PAC
+        detail:
+          type: string
+          description: Detalle adicional del error
