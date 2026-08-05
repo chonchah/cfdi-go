@@ -25,6 +25,9 @@ type CFDIRequest struct {
 	Receptor          Receptor     `json:"Receptor"`
 	Conceptos         []Concepto   `json:"Conceptos"`
 	Complemento       *Complemento `json:"Complemento,omitempty"`
+	// DocumentType is the SOAP documentType sent to the PAC. Empty means the
+	// default "1" (Ingreso) is used.
+	DocumentType string `json:"documentType,omitempty"`
 }
 
 // FromJSON decodes a CFDIRequest from its JSON representation.

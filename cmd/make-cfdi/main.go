@@ -10,6 +10,9 @@
 //	PAC_PASSWORD           - SOAP password
 //	PAC_INVOICE_PASSWORD   - certificate password sent as the body "password" param
 //	PAC_SOAP_ACTION        - SOAPAction override (default: derived from PAC_URL)
+//
+// The JSON body may include an optional "documentType" field that is sent as
+// the SOAP documentType parameter (default "1" when absent).
 package main
 
 import (
@@ -74,7 +77,7 @@ func makeCFDI(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		resp, err := cfdi.StampCFDI(pacCfg, xmlContent)
+		resp, err := cfdi.StampCFDI(pacCfg, xmlContent, req.DocumentType)
 		if err != nil {
 			errJSON, _ := json.Marshal(map[string]string{
 				"error": fmt.Sprintf("PAC stamping failed: %s", err.Error()),

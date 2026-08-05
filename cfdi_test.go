@@ -1,6 +1,7 @@
 package cfdi
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -411,7 +412,7 @@ func TestStampCFDIHeaders(t *testing.T) {
 		InvoicePassword: "certpass",
 	}
 
-	resp, err := StampCFDI(cfg, `<cfdi:Comprobante/>`)
+	resp, err := StampCFDI(cfg, `<cfdi:Comprobante/>`, "")
 	if err != nil {
 		t.Fatalf("StampCFDI failed: %s", err)
 	}
@@ -450,11 +451,39 @@ func TestStampCFDICustomSOAPAction(t *testing.T) {
 		SOAPAction: `"custom-action"`,
 	}
 
-	if _, err := StampCFDI(cfg, `<cfdi:Comprobante/>`); err != nil {
+	if _, err := StampCFDI(cfg, `<cfdi:Comprobante/>`, ""); err != nil {
 		t.Fatalf("StampCFDI failed: %s", err)
 	}
 	if sa := lastReq.Header.Get("SOAPAction"); sa != `"custom-action"` {
 		t.Errorf("expected configured SOAPAction, got %q", sa)
+	}
+}
+
+func TestStampCFDIDocumentType(t *testing.T) {
+	const soapResp = `<soap:Envelope><soap:Body><generateInvoiceVersion4Response><generateInvoiceVersion4Result>SUCCESS:https://example.com/xml,https://example.com/pdf</generateInvoiceVersion4Result></generateInvoiceVersion4Response></soap:Body></soap:Envelope>`
+
+	var body []byte
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ = io.ReadAll(r.Body)
+		w.Header().Set("Content-Type", "text/xml; charset=utf-8")
+		w.Write([]byte(soapResp))
+	}))
+	defer server.Close()
+
+	cfg := &PACConfig{URL: server.URL}
+
+	if _, err := StampCFDI(cfg, `<cfdi:Comprobante/>`, ""); err != nil {
+		t.Fatalf("StampCFDI failed: %s", err)
+	}
+	if !strings.Contains(string(body), "<documentType>1</documentType>") {
+		t.Errorf("expected default documentType 1, got body:\n%s", body)
+	}
+
+	if _, err := StampCFDI(cfg, `<cfdi:Comprobante/>`, "2"); err != nil {
+		t.Fatalf("StampCFDI failed: %s", err)
+	}
+	if !strings.Contains(string(body), "<documentType>2</documentType>") {
+		t.Errorf("expected documentType 2, got body:\n%s", body)
 	}
 }
 

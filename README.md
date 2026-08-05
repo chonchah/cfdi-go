@@ -80,7 +80,7 @@ func main() {
 		Username:        "user",
 		Password:        "pass",
 		InvoicePassword: "cert-password",
-	}, req.ParseCFDItoXML())
+	}, req.ParseCFDItoXML(), req.DocumentType)
 	if err != nil {
 		panic(err)
 	}
@@ -106,7 +106,7 @@ req.FromJSON([]byte(`{...}`))
 | `BuildSOAPPayload(url, document, docType, user, password, invoicePassword)` | Wrap a document in the PAC SOAP envelope |
 | `ExtractPACResponseText(soapResponse)` | Extract the PAC result from a SOAP response |
 | `PACConfig` / `PACResponse` | PAC client configuration and result |
-| `StampCFDI(cfg, xmlContent)` | Send a document to a PAC for stamping |
+| `StampCFDI(cfg, xmlContent, docType)` | Send a document to a PAC for stamping (docType defaults to `"1"` when empty) |
 
 ## SOAP / PAC
 
@@ -141,6 +141,11 @@ Request envelope:
 
 The operation namespace is the webservice `URL`. The CFDI document is escaped
 (`&`, `<`, `>`, `"` → entities) inside `<document>`.
+
+The `<documentType>` parameter is configurable per request via the optional
+`documentType` field on `CFDIRequest` (JSON key `documentType`). It is passed
+to `StampCFDI` as the `docType` argument; when empty (or omitted from the
+JSON), the default `"1"` (Ingreso) is used.
 
 `PACConfig` fields:
 
