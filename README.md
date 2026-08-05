@@ -76,9 +76,10 @@ func main() {
 
 	// Stamp via PAC (optional)
 	resp, err := cfdi.StampCFDI(&cfdi.PACConfig{
-		URL:      "https://your-pac.example/cfdi",
-		Username: "user",
-		Password: "pass",
+		URL:             "https://your-pac.example/webservice",
+		Username:        "user",
+		Password:        "pass",
+		InvoicePassword: "cert-password",
 	}, req.ParseCFDItoXML())
 	if err != nil {
 		panic(err)
@@ -102,10 +103,60 @@ req.FromJSON([]byte(`{...}`))
 | `CFDIRequest.ParseCFDItoXML()` | Build the CFDI 4.0 XML string |
 | `CFDIRequest.Validate()` | Validate required fields |
 | `CFDIRequest.FromJSON()` | Decode from JSON |
-| `BuildSOAPPayload(document, docType)` | Wrap a document in a SOAP envelope |
+| `BuildSOAPPayload(url, document, docType, user, password, invoicePassword)` | Wrap a document in the PAC SOAP envelope |
 | `ExtractPACResponseText(soapResponse)` | Extract the PAC result from a SOAP response |
 | `PACConfig` / `PACResponse` | PAC client configuration and result |
 | `StampCFDI(cfg, xmlContent)` | Send a document to a PAC for stamping |
+
+## SOAP / PAC
+
+`StampCFDI` talks to the PAC over SOAP 1.1, replicating the request format of a
+legacy PHP client. Authentication is carried inside the SOAP `Auth` header
+(not HTTP Basic Auth), and the operation is `generateInvoiceVersion4`.
+
+Request envelope:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns1="{URL}">
+  <soap:Header>
+    <ns1:Auth xmlns:ns2="namespace">
+      <ns2:userName>{user}</ns2:userName>
+      <ns2:password>{password}</ns2:password>
+    </ns1:Auth>
+  </soap:Header>
+  <soap:Body>
+    <ns1:generateInvoiceVersion4>
+      <document>{escaped CFDI XML}</document>
+      <documentType>{docType}</documentType>
+      <fileType>1</fileType>
+      <cer></cer>
+      <key></key>
+      <password>{certificate password}</password>
+      <commercio>0</commercio>
+    </ns1:generateInvoiceVersion4>
+  </soap:Body>
+</soap:Envelope>
+```
+
+The operation namespace is the webservice `URL`. The CFDI document is escaped
+(`&`, `<`, `>`, `"` → entities) inside `<document>`.
+
+`PACConfig` fields:
+
+| Field | Meaning |
+|---|---|
+| `URL` | PAC webservice endpoint; used as request URL and SOAP operation namespace |
+| `Username` | SOAP user, sent in the SOAP `Auth` header |
+| `Password` | SOAP password, sent in the SOAP `Auth` header |
+| `InvoicePassword` | Certificate (FIEL/CSD) password, sent as the body `password` parameter |
+| `SOAPAction` | HTTP `SOAPAction` header; if empty it is derived as `URL + "#generateInvoiceVersion4"` |
+| `Timeout` | Request timeout in seconds |
+
+The `Auth` header children (`userName`/`password`) and the derived `SOAPAction`
+assume the format the PHP client sends. If your PAC rejects the request, capture
+the real PHP request with `$client->__getLastRequest()` /
+`__getLastRequestHeaders()` and adjust the assumptions accordingly.
 
 ## Example service
 

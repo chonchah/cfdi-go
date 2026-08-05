@@ -1,6 +1,8 @@
 package cfdi
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -311,17 +313,148 @@ func TestValidateInvalidTipo(t *testing.T) {
 }
 
 func TestBuildSOAPPayload(t *testing.T) {
+	const (
+		url             = "https://cfdi.pac-provider.com/webservice"
+		user            = "login-user"
+		pass            = "login-pass"
+		invoicePassword = "cert-pass"
+	)
 	doc := `<cfdi:Comprobante><cfdi:Emisor/></cfdi:Comprobante>`
-	payload := BuildSOAPPayload(doc, "1")
+	payload := BuildSOAPPayload(url, doc, "1", user, pass, invoicePassword)
 
-	if !strings.Contains(payload, "soap:Envelope") {
-		t.Error("Missing SOAP Envelope")
+	checks := []struct {
+		name string
+		fn   func() bool
+	}{
+		{"soap envelope", func() bool { return strings.Contains(payload, "soap:Envelope") }},
+		{"soap header", func() bool { return strings.Contains(payload, "soap:Header") }},
+		{"soap body", func() bool { return strings.Contains(payload, "soap:Body") }},
+		{"operation generateInvoiceVersion4", func() bool { return strings.Contains(payload, "ns1:generateInvoiceVersion4") }},
+		{"no legacy GenerateInvoice", func() bool { return !strings.Contains(payload, "GenerateInvoice") }},
+		{"no legacy provider namespace", func() bool { return !strings.Contains(payload, "http://cfdi_pack_provider.com/") }},
+		{"no legacy cfdi360 namespace", func() bool { return !strings.Contains(payload, "http://cfdi360.com/") }},
+		{"webservice URL as operation namespace", func() bool { return strings.Contains(payload, `xmlns:ns1="`+url+`"`) }},
+		{"Auth header with literal namespace", func() bool { return strings.Contains(payload, `<ns1:Auth xmlns:ns2="namespace">`) }},
+		{"userName in Auth header", func() bool { return strings.Contains(payload, "<ns2:userName>"+user+"</ns2:userName>") }},
+		{"password in Auth header", func() bool { return strings.Contains(payload, "<ns2:password>"+pass+"</ns2:password>") }},
+		{"document escaped", func() bool { return strings.Contains(payload, "&lt;cfdi:Comprobante&gt;") }},
+		{"documentType param", func() bool { return strings.Contains(payload, "<documentType>1</documentType>") }},
+		{"fileType=1", func() bool { return strings.Contains(payload, "<fileType>1</fileType>") }},
+		{"cer empty", func() bool { return strings.Contains(payload, "<cer></cer>") }},
+		{"key empty", func() bool { return strings.Contains(payload, "<key></key>") }},
+		{"certificate password param", func() bool { return strings.Contains(payload, "<password>"+invoicePassword+"</password>") }},
+		{"commercio=0", func() bool { return strings.Contains(payload, "<commercio>0</commercio>") }},
+		{"params ordered: cer before key", func() bool { return strings.Index(payload, "<cer>") < strings.Index(payload, "<key>") }},
+		{"params ordered: key before password", func() bool { return strings.Index(payload, "<key>") < strings.Index(payload, "<password>") }},
+		{"params ordered: password before commercio", func() bool { return strings.Index(payload, "<password>") < strings.Index(payload, "<commercio>") }},
 	}
-	if !strings.Contains(payload, "GenerateInvoice") {
-		t.Error("Missing GenerateInvoice element")
+
+	for _, check := range checks {
+		if !check.fn() {
+			t.Errorf("FAIL: %s", check.name)
+		}
 	}
-	if !strings.Contains(payload, "&lt;cfdi:Comprobante&gt;") {
-		t.Error("Document should be XML-escaped in SOAP payload")
+}
+
+func TestBuildSOAPPayloadGolden(t *testing.T) {
+	const (
+		url             = "https://cfdi.pac-provider.com/webservice"
+		user            = "user"
+		pass            = "pass"
+		invoicePassword = "certpass"
+	)
+	doc := `<cfdi:Comprobante><cfdi:Emisor/></cfdi:Comprobante>`
+
+	got := BuildSOAPPayload(url, doc, "1", user, pass, invoicePassword)
+
+	want := `<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns1="https://cfdi.pac-provider.com/webservice">
+  <soap:Header>
+    <ns1:Auth xmlns:ns2="namespace">
+      <ns2:userName>user</ns2:userName>
+      <ns2:password>pass</ns2:password>
+    </ns1:Auth>
+  </soap:Header>
+  <soap:Body>
+    <ns1:generateInvoiceVersion4>
+      <document>&lt;cfdi:Comprobante&gt;&lt;cfdi:Emisor/&gt;&lt;/cfdi:Comprobante&gt;</document>
+      <documentType>1</documentType>
+      <fileType>1</fileType>
+      <cer></cer>
+      <key></key>
+      <password>certpass</password>
+      <commercio>0</commercio>
+    </ns1:generateInvoiceVersion4>
+  </soap:Body>
+</soap:Envelope>`
+
+	if got != want {
+		t.Errorf("SOAP envelope mismatch.\n--- got ---\n%s\n--- want ---\n%s", got, want)
+	}
+}
+
+func TestStampCFDIHeaders(t *testing.T) {
+	const url = "https://cfdi.pac-provider.com/webservice"
+
+	var lastReq *http.Request
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		lastReq = r
+		w.Header().Set("Content-Type", "text/xml; charset=utf-8")
+		w.Write([]byte(`<soap:Envelope><soap:Body><generateInvoiceVersion4Response><generateInvoiceVersion4Result>SUCCESS:https://example.com/xml,https://example.com/pdf</generateInvoiceVersion4Result></generateInvoiceVersion4Response></soap:Body></soap:Envelope>`))
+	}))
+	defer server.Close()
+
+	cfg := &PACConfig{
+		URL:             server.URL,
+		Username:        "user",
+		Password:        "pass",
+		InvoicePassword: "certpass",
+	}
+
+	resp, err := StampCFDI(cfg, `<cfdi:Comprobante/>`)
+	if err != nil {
+		t.Fatalf("StampCFDI failed: %s", err)
+	}
+	if !resp.Success {
+		t.Fatalf("expected success, got error: %s", resp.Error)
+	}
+
+	if lastReq == nil {
+		t.Fatal("no request captured")
+	}
+	if ct := lastReq.Header.Get("Content-Type"); ct != "text/xml; charset=utf-8" {
+		t.Errorf("expected Content-Type text/xml; charset=utf-8, got %s", ct)
+	}
+	wantAction := server.URL + "#generateInvoiceVersion4"
+	if sa := lastReq.Header.Get("SOAPAction"); sa != wantAction {
+		t.Errorf("expected auto-derived SOAPAction %q, got %q", wantAction, sa)
+	}
+	if auth := lastReq.Header.Get("Authorization"); auth != "" {
+		t.Errorf("expected no Authorization header after removing Basic Auth, got %q", auth)
+	}
+}
+
+func TestStampCFDICustomSOAPAction(t *testing.T) {
+	var lastReq *http.Request
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		lastReq = r
+		w.Header().Set("Content-Type", "text/xml; charset=utf-8")
+		w.Write([]byte(`<soap:Envelope><soap:Body><generateInvoiceVersion4Response><generateInvoiceVersion4Result>SUCCESS:https://example.com/xml,https://example.com/pdf</generateInvoiceVersion4Result></generateInvoiceVersion4Response></soap:Body></soap:Envelope>`))
+	}))
+	defer server.Close()
+
+	cfg := &PACConfig{
+		URL:        server.URL,
+		Username:   "user",
+		Password:   "pass",
+		SOAPAction: `"custom-action"`,
+	}
+
+	if _, err := StampCFDI(cfg, `<cfdi:Comprobante/>`); err != nil {
+		t.Fatalf("StampCFDI failed: %s", err)
+	}
+	if sa := lastReq.Header.Get("SOAPAction"); sa != `"custom-action"` {
+		t.Errorf("expected configured SOAPAction, got %q", sa)
 	}
 }
 

@@ -5,23 +5,39 @@ import (
 	"strings"
 )
 
-// BuildSOAPPayload escapes the XML document and wraps it in a SOAP envelope
-// with the GenerateInvoice operation understood by the PAC provider.
-func BuildSOAPPayload(document string, docType string) string {
+// BuildSOAPPayload escapes the XML document and wraps it in a SOAP 1.1
+// envelope replicating the legacy PHP client's generateInvoiceVersion4
+// request format. The operation namespace is the PAC webservice URL, and
+// authentication is carried by a SOAP Auth header whose children use the
+// literal "namespace" namespace (as the PHP SoapHeader('namespace', 'Auth',
+// ...) call sends it). If the PAC rejects the request, verify against
+// $client->__getLastRequest() / __getLastRequestHeaders() from PHP.
+func BuildSOAPPayload(url, document, docType, user, password, invoicePassword string) string {
 	escaped := strings.ReplaceAll(document, "&", "&amp;")
 	escaped = strings.ReplaceAll(escaped, "<", "&lt;")
 	escaped = strings.ReplaceAll(escaped, ">", "&gt;")
 	escaped = strings.ReplaceAll(escaped, "\"", "&quot;")
 
 	return fmt.Sprintf(`<?xml version="1.0" encoding="utf-8"?>
-<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns1="%s">
+  <soap:Header>
+    <ns1:Auth xmlns:ns2="namespace">
+      <ns2:userName>%s</ns2:userName>
+      <ns2:password>%s</ns2:password>
+    </ns1:Auth>
+  </soap:Header>
   <soap:Body>
-    <GenerateInvoice xmlns="http://cfdi_pack_provider.com/">
+    <ns1:generateInvoiceVersion4>
       <document>%s</document>
       <documentType>%s</documentType>
-    </GenerateInvoice>
+      <fileType>1</fileType>
+      <cer></cer>
+      <key></key>
+      <password>%s</password>
+      <commercio>0</commercio>
+    </ns1:generateInvoiceVersion4>
   </soap:Body>
-</soap:Envelope>`, escaped, docType)
+</soap:Envelope>`, url, user, password, escaped, docType, invoicePassword)
 }
 
 // ExtractPACResponseText extracts the meaningful text from a SOAP response.

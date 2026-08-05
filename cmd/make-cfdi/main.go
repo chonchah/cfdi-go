@@ -4,11 +4,12 @@
 //
 // Environment variables:
 //
-//	PORT            - HTTP port (default 8080)
-//	PAC_URL         - PAC endpoint (omit to only generate XML)
-//	PAC_USERNAME    - SOAP username
-//	PAC_PASSWORD    - SOAP password
-//	PAC_SOAP_ACTION - SOAPAction (default GenerateInvoice)
+//	PORT                   - HTTP port (default 8080)
+//	PAC_URL                - PAC endpoint (omit to only generate XML)
+//	PAC_USERNAME           - SOAP username
+//	PAC_PASSWORD           - SOAP password
+//	PAC_INVOICE_PASSWORD   - certificate password sent as the body "password" param
+//	PAC_SOAP_ACTION        - SOAPAction override (default: derived from PAC_URL)
 package main
 
 import (
@@ -25,6 +26,7 @@ func getPACConfigFromEnv() *cfdi.PACConfig {
 	url := os.Getenv("PAC_URL")
 	username := os.Getenv("PAC_USERNAME")
 	password := os.Getenv("PAC_PASSWORD")
+	invoicePassword := os.Getenv("PAC_INVOICE_PASSWORD")
 
 	if url == "" {
 		return nil
@@ -34,6 +36,7 @@ func getPACConfigFromEnv() *cfdi.PACConfig {
 	cfg.URL = url
 	cfg.Username = username
 	cfg.Password = password
+	cfg.InvoicePassword = invoicePassword
 
 	if action := os.Getenv("PAC_SOAP_ACTION"); action != "" {
 		cfg.SOAPAction = action
@@ -65,7 +68,7 @@ func makeCFDI(w http.ResponseWriter, r *http.Request) {
 		pacCfg := getPACConfigFromEnv()
 		if pacCfg == nil {
 			errJSON, _ := json.Marshal(map[string]string{
-				"error": "timbrar=true but PAC is not configured (set PAC_URL, PAC_USERNAME, PAC_PASSWORD)",
+				"error": "timbrar=true but PAC is not configured (set PAC_URL, PAC_USERNAME, PAC_PASSWORD, PAC_INVOICE_PASSWORD)",
 			})
 			http.Error(w, string(errJSON), http.StatusBadRequest)
 			return
