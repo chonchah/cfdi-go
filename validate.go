@@ -68,6 +68,9 @@ func (req *CFDIRequest) Validate() (bool, []string) {
 		if req.Moneda == "" {
 			errs = append(errs, "Moneda is required for TipoDeComprobante I")
 		}
+		if req.Moneda != "" && req.Moneda != "MXN" && req.TipoCambio == "" {
+			errs = append(errs, "TipoCambio is required when Moneda is not MXN")
+		}
 		if req.Total == "" {
 			errs = append(errs, "Total is required for TipoDeComprobante I")
 		}

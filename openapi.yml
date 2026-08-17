@@ -192,14 +192,26 @@ components:
           type: string
           description: Fecha y hora de emisión (ISO 8601)
           example: "2026-07-01T10:00:00"
+        CondicionesDePago:
+          type: string
+          description: Condiciones de pago del comprobante (opcional)
+          example: "Pago a 30 días"
         SubTotal:
           type: string
           description: Subtotal del comprobante (requerido para I)
           example: "1000.00"
+        Descuento:
+          type: string
+          description: Descuento global del comprobante (opcional)
+          example: "100.00"
         Moneda:
           type: string
           description: Moneda (requerido para I)
           example: MXN
+        TipoCambio:
+          type: string
+          description: Tipo de cambio (requerido cuando Moneda no es MXN)
+          example: "17.50"
         Total:
           type: string
           description: Total del comprobante (requerido para I)
@@ -224,6 +236,10 @@ components:
           type: string
           description: Código postal del lugar de expedición
           example: "06000"
+        Confirmacion:
+          type: string
+          description: Confirmación de recepción del comprobante (opcional)
+          example: "ABC123"
         Emisor:
           $ref: "#/components/schemas/Emisor"
         Receptor:
@@ -301,6 +317,10 @@ components:
           type: string
           description: Clave del producto o servicio (catálogo c_ClaveProdServ)
           example: "84111506"
+        NoIdentificacion:
+          type: string
+          description: Número de parte, SKU o código interno de control del emisor (opcional)
+          example: PZA-001
         Cantidad:
           type: string
           description: Cantidad
@@ -309,6 +329,10 @@ components:
           type: string
           description: Clave de unidad (catálogo c_ClaveUnidad)
           example: E48
+        Unidad:
+          type: string
+          description: Texto descriptivo libre de la unidad (opcional)
+          example: Pieza
         Descripcion:
           type: string
           description: Descripción del concepto
@@ -321,6 +345,10 @@ components:
           type: string
           description: Importe total del concepto
           example: "1000.00"
+        Descuento:
+          type: string
+          description: Monto de rebaja aplicado de manera específica al concepto (opcional)
+          example: "50.00"
         ObjetoImp:
           type: string
           description: Objeto del impuesto (01 No objeto, 02 Sí objeto, 03 Sí objeto impuesto trasladado, 04 Sí objeto impuesto retenido)

@@ -15,14 +15,18 @@ type CFDI struct {
 	Serie             string   `xml:"Serie,attr"`
 	Folio             string   `xml:"Folio,attr"`
 	Fecha             string   `xml:"Fecha,attr"`
+	CondicionesDePago string   `xml:"CondicionesDePago,attr,omitempty"`
 	SubTotal          string   `xml:"SubTotal,attr"`
+	Descuento         string   `xml:"Descuento,attr,omitempty"`
 	Moneda            string   `xml:"Moneda,attr"`
+	TipoCambio        string   `xml:"TipoCambio,attr,omitempty"`
 	Total             string   `xml:"Total,attr"`
 	TipoDeComprobante string   `xml:"TipoDeComprobante,attr"`
 	Exportacion       string   `xml:"Exportacion,attr"`
 	MetodoPago        string   `xml:"MetodoPago,attr,omitempty"`
 	FormaPago         string   `xml:"FormaPago,attr,omitempty"`
 	LugarExpedicion   string   `xml:"LugarExpedicion,attr"`
+	Confirmacion      string   `xml:"Confirmacion,attr,omitempty"`
 	NoCertificado     string   `xml:"NoCertificado,attr,omitempty"`
 	Certificado       string   `xml:"Certificado,attr,omitempty"`
 	Sello             string   `xml:"Sello,attr,omitempty"`
@@ -57,14 +61,17 @@ type Receptor struct {
 
 // Concepto is a single line item of the invoice.
 type Concepto struct {
-	ClaveProdServ string             `xml:"ClaveProdServ,attr" json:"ClaveProdServ"`
-	Cantidad      string             `xml:"Cantidad,attr" json:"Cantidad"`
-	ClaveUnidad   string             `xml:"ClaveUnidad,attr" json:"ClaveUnidad"`
-	Descripcion   string             `xml:"Descripcion,attr" json:"Descripcion"`
-	ValorUnitario string             `xml:"ValorUnitario,attr" json:"ValorUnitario"`
-	Importe       string             `xml:"Importe,attr" json:"Importe"`
-	ObjetoImp     string             `xml:"ObjetoImp,attr" json:"ObjetoImp"`
-	Impuestos     *ConceptoImpuestos `xml:"cfdi:Impuestos,omitempty" json:"Impuestos,omitempty"`
+	ClaveProdServ    string             `xml:"ClaveProdServ,attr" json:"ClaveProdServ"`
+	NoIdentificacion string             `xml:"NoIdentificacion,attr,omitempty" json:"NoIdentificacion,omitempty"`
+	Cantidad         string             `xml:"Cantidad,attr" json:"Cantidad"`
+	ClaveUnidad      string             `xml:"ClaveUnidad,attr" json:"ClaveUnidad"`
+	Unidad           string             `xml:"Unidad,attr,omitempty" json:"Unidad,omitempty"`
+	Descripcion      string             `xml:"Descripcion,attr" json:"Descripcion"`
+	ValorUnitario    string             `xml:"ValorUnitario,attr" json:"ValorUnitario"`
+	Importe          string             `xml:"Importe,attr" json:"Importe"`
+	Descuento        string             `xml:"Descuento,attr,omitempty" json:"Descuento,omitempty"`
+	ObjetoImp        string             `xml:"ObjetoImp,attr" json:"ObjetoImp"`
+	Impuestos        *ConceptoImpuestos `xml:"cfdi:Impuestos,omitempty" json:"Impuestos,omitempty"`
 }
 
 // ConceptoImpuestos are the taxes of a single line item.

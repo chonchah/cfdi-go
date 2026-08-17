@@ -13,14 +13,18 @@ type CFDIRequest struct {
 	Serie             string       `json:"Serie"`
 	Folio             string       `json:"Folio"`
 	Fecha             string       `json:"Fecha"`
+	CondicionesDePago string       `json:"CondicionesDePago,omitempty"`
 	SubTotal          string       `json:"SubTotal,omitempty"`
+	Descuento         string       `json:"Descuento,omitempty"`
 	Moneda            string       `json:"Moneda,omitempty"`
+	TipoCambio        string       `json:"TipoCambio,omitempty"`
 	Total             string       `json:"Total,omitempty"`
 	TipoDeComprobante string       `json:"TipoDeComprobante"`
 	Exportacion       string       `json:"Exportacion"`
 	MetodoPago        string       `json:"MetodoPago,omitempty"`
 	FormaPago         string       `json:"FormaPago,omitempty"`
 	LugarExpedicion   string       `json:"LugarExpedicion"`
+	Confirmacion      string       `json:"Confirmacion,omitempty"`
 	Emisor            Emisor       `json:"Emisor"`
 	Receptor          Receptor     `json:"Receptor"`
 	Conceptos         []Concepto   `json:"Conceptos"`
@@ -42,14 +46,18 @@ func (req *CFDIRequest) ParseCFDItoXML() string {
 		Serie:             req.Serie,
 		Folio:             req.Folio,
 		Fecha:             req.Fecha,
+		CondicionesDePago: req.CondicionesDePago,
 		SubTotal:          req.SubTotal,
+		Descuento:         req.Descuento,
 		Moneda:            req.Moneda,
+		TipoCambio:        req.TipoCambio,
 		Total:             req.Total,
 		TipoDeComprobante: req.TipoDeComprobante,
 		Exportacion:       req.Exportacion,
 		MetodoPago:        req.MetodoPago,
 		FormaPago:         req.FormaPago,
 		LugarExpedicion:   req.LugarExpedicion,
+		Confirmacion:      req.Confirmacion,
 		XmlnsCFDI:         "http://www.sat.gob.mx/cfd/4",
 		XmlnsXsi:          "http://www.w3.org/2001/XMLSchema-instance",
 		Emisor:            req.Emisor,

@@ -14,7 +14,9 @@ func TestGenerateIngresoXML(t *testing.T) {
 		Serie:             "A",
 		Folio:             "100",
 		Fecha:             "2026-07-01T10:00:00",
+		CondicionesDePago: "Pago a 30 dias",
 		SubTotal:          "1000.00",
+		Descuento:         "100.00",
 		Moneda:            "MXN",
 		Total:             "1160.00",
 		TipoDeComprobante: "I",
@@ -22,6 +24,7 @@ func TestGenerateIngresoXML(t *testing.T) {
 		MetodoPago:        "PPD",
 		FormaPago:         "99",
 		LugarExpedicion:   "06000",
+		Confirmacion:      "ABC123",
 		Emisor: Emisor{
 			Rfc:           "XAXX010101000",
 			Nombre:        "EMISORA EJEMPLO SA DE CV",
@@ -36,26 +39,29 @@ func TestGenerateIngresoXML(t *testing.T) {
 		},
 		Conceptos: []Concepto{
 			{
-				ClaveProdServ: "84111506",
-				Cantidad:      "1.00",
-				ClaveUnidad:   "E48",
-				Descripcion:   "Servicios de ejemplo",
-				ValorUnitario: "1000.00",
-				Importe:       "1000.00",
-				ObjetoImp:     "02",
-			Impuestos: &ConceptoImpuestos{
-				Traslados: &TrasladosWrapper{
-					Traslado: []Traslado{
-						{
-							Base:       "1000.00",
-							Impuesto:   "002",
-							TipoFactor: "Tasa",
-							TasaOCuota: "0.160000",
-							Importe:    "160.00",
+				ClaveProdServ:    "84111506",
+				NoIdentificacion: "PZA-001",
+				Cantidad:         "1.00",
+				ClaveUnidad:      "E48",
+				Unidad:           "Pieza",
+				Descripcion:      "Servicios de ejemplo",
+				ValorUnitario:    "1000.00",
+				Importe:          "1000.00",
+				Descuento:        "50.00",
+				ObjetoImp:        "02",
+				Impuestos: &ConceptoImpuestos{
+					Traslados: &TrasladosWrapper{
+						Traslado: []Traslado{
+							{
+								Base:       "1000.00",
+								Impuesto:   "002",
+								TipoFactor: "Tasa",
+								TasaOCuota: "0.160000",
+								Importe:    "160.00",
+							},
 						},
 					},
 				},
-			},
 			},
 		},
 	}
@@ -74,6 +80,9 @@ func TestGenerateIngresoXML(t *testing.T) {
 		{"MetodoPago=\"PPD\"", func() bool { return strings.Contains(xmlOut, `MetodoPago="PPD"`) }},
 		{"FormaPago=\"99\"", func() bool { return strings.Contains(xmlOut, `FormaPago="99"`) }},
 		{"SubTotal=\"1000.00\"", func() bool { return strings.Contains(xmlOut, `SubTotal="1000.00"`) }},
+		{"Descuento=\"100.00\"", func() bool { return strings.Contains(xmlOut, `Descuento="100.00"`) }},
+		{"CondicionesDePago", func() bool { return strings.Contains(xmlOut, `CondicionesDePago="Pago a 30 dias"`) }},
+		{"Confirmacion=\"ABC123\"", func() bool { return strings.Contains(xmlOut, `Confirmacion="ABC123"`) }},
 		{"Total=\"1160.00\"", func() bool { return strings.Contains(xmlOut, `Total="1160.00"`) }},
 		{"Exportacion=\"01\"", func() bool { return strings.Contains(xmlOut, `Exportacion="01"`) }},
 		{"LugarExpedicion=\"06000\"", func() bool { return strings.Contains(xmlOut, `LugarExpedicion="06000"`) }},
@@ -85,6 +94,9 @@ func TestGenerateIngresoXML(t *testing.T) {
 		{"Conceptos element", func() bool { return strings.Contains(xmlOut, "cfdi:Conceptos") }},
 		{"Concepto element", func() bool { return strings.Contains(xmlOut, "cfdi:Concepto") }},
 		{"ClaveProdServ", func() bool { return strings.Contains(xmlOut, `ClaveProdServ="84111506"`) }},
+		{"NoIdentificacion", func() bool { return strings.Contains(xmlOut, `NoIdentificacion="PZA-001"`) }},
+		{"Unidad", func() bool { return strings.Contains(xmlOut, `Unidad="Pieza"`) }},
+		{"concept-level Descuento", func() bool { return strings.Contains(xmlOut, `Descuento="50.00"`) }},
 		{"ObjetoImp=\"02\"", func() bool { return strings.Contains(xmlOut, `ObjetoImp="02"`) }},
 		{"Traslados element", func() bool { return strings.Contains(xmlOut, "cfdi:Traslados") }},
 		{"TasaOCuota", func() bool { return strings.Contains(xmlOut, `TasaOCuota="0.160000"`) }},
@@ -218,6 +230,35 @@ func TestGeneratePagoXML(t *testing.T) {
 	}
 }
 
+func TestGenerateIngresoXMLTipoCambio(t *testing.T) {
+	req := &CFDIRequest{
+		Version:           "4.0",
+		Serie:             "A",
+		Folio:             "100",
+		Fecha:             "2026-07-01T10:00:00",
+		SubTotal:          "1000.00",
+		Moneda:            "USD",
+		TipoCambio:        "17.50",
+		Total:             "1160.00",
+		TipoDeComprobante: "I",
+		Exportacion:       "01",
+		MetodoPago:        "PPD",
+		FormaPago:         "99",
+		LugarExpedicion:   "06000",
+		Emisor:            Emisor{Rfc: "XAXX010101000", Nombre: "E", RegimenFiscal: "601"},
+		Receptor:          Receptor{Rfc: "XEXX010101000", Nombre: "C", DomicilioFiscalReceptor: "06500", RegimenFiscalReceptor: "601", UsoCFDI: "G03"},
+		Conceptos:         []Concepto{{ClaveProdServ: "84111506", Cantidad: "1", ClaveUnidad: "E48", Descripcion: "S", ValorUnitario: "1000", Importe: "1000", ObjetoImp: "02"}},
+	}
+
+	xmlOut := req.ParseCFDItoXML()
+	if !strings.Contains(xmlOut, `Moneda="USD"`) {
+		t.Error("expected Moneda=\"USD\"")
+	}
+	if !strings.Contains(xmlOut, `TipoCambio="17.50"`) {
+		t.Error("expected TipoCambio=\"17.50\"")
+	}
+}
+
 func TestValidateIngreso(t *testing.T) {
 	req := &CFDIRequest{
 		TipoDeComprobante: "I",
@@ -240,6 +281,41 @@ func TestValidateIngreso(t *testing.T) {
 	valid, errs := req.Validate()
 	if !valid {
 		t.Errorf("Expected valid I-type request, got errors: %v", errs)
+	}
+}
+
+func TestValidateTipoCambio(t *testing.T) {
+	req := &CFDIRequest{
+		TipoDeComprobante: "I",
+		Version:           "4.0",
+		Serie:             "A",
+		Folio:             "100",
+		Fecha:             "2026-07-01T10:00:00",
+		SubTotal:          "1000.00",
+		Moneda:            "USD",
+		Total:             "1160.00",
+		Exportacion:       "01",
+		MetodoPago:        "PPD",
+		FormaPago:         "99",
+		LugarExpedicion:   "06000",
+		Emisor:            Emisor{Rfc: "XAXX010101000", Nombre: "E", RegimenFiscal: "601"},
+		Receptor:          Receptor{Rfc: "XEXX010101000", Nombre: "C", DomicilioFiscalReceptor: "06500", RegimenFiscalReceptor: "601", UsoCFDI: "G03"},
+		Conceptos:         []Concepto{{ClaveProdServ: "84111506", Cantidad: "1", ClaveUnidad: "E48", Descripcion: "S", ValorUnitario: "1000", Importe: "1000", ObjetoImp: "02"}},
+	}
+
+	valid, errs := req.Validate()
+	if valid {
+		t.Error("Expected validation to fail when Moneda is not MXN and TipoCambio is missing")
+	}
+	found := false
+	for _, e := range errs {
+		if strings.Contains(e, "TipoCambio") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("Expected error about TipoCambio, got: %v", errs)
 	}
 }
 
