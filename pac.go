@@ -48,8 +48,10 @@ type PACResponse struct {
 
 // StampCFDI sends the CFDI XML to the PAC for stamping and returns the raw
 // response. docType is the SOAP documentType; when empty, "1" is used.
+// fileType is the SOAP fileType ("0"=TXT, "1"=XML); when empty, "1" is used.
+// commercio is the SOAP commercio flag; when empty, "0" is used.
 // If cfg is nil, DefaultConfig is used.
-func StampCFDI(cfg *PACConfig, xmlContent, docType string) (*PACResponse, error) {
+func StampCFDI(cfg *PACConfig, xmlContent, docType, fileType, commercio string) (*PACResponse, error) {
 	if cfg == nil {
 		cfg = DefaultConfig()
 	}
@@ -57,8 +59,14 @@ func StampCFDI(cfg *PACConfig, xmlContent, docType string) (*PACResponse, error)
 	if docType == "" {
 		docType = "1"
 	}
+	if fileType == "" {
+		fileType = "1"
+	}
+	if commercio == "" {
+		commercio = "0"
+	}
 
-	payload := BuildSOAPPayload(cfg.URL, xmlContent, docType, cfg.Username, cfg.Password, cfg.InvoicePassword)
+	payload := BuildSOAPPayload(cfg.URL, xmlContent, docType, fileType, commercio, cfg.Username, cfg.Password, cfg.InvoicePassword)
 
 	req, err := http.NewRequest("POST", cfg.URL, strings.NewReader(payload))
 	if err != nil {

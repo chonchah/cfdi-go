@@ -103,10 +103,10 @@ req.FromJSON([]byte(`{...}`))
 | `CFDIRequest.ParseCFDItoXML()` | Build the CFDI 4.0 XML string |
 | `CFDIRequest.Validate()` | Validate required fields |
 | `CFDIRequest.FromJSON()` | Decode from JSON |
-| `BuildSOAPPayload(url, document, docType, user, password, invoicePassword)` | Wrap a document in the PAC SOAP envelope |
+| `BuildSOAPPayload(url, document, docType, fileType, commercio, user, password, invoicePassword)` | Wrap a document in the PAC SOAP envelope |
 | `ExtractPACResponseText(soapResponse)` | Extract the PAC result from a SOAP response |
 | `PACConfig` / `PACResponse` | PAC client configuration and result |
-| `StampCFDI(cfg, xmlContent, docType)` | Send a document to a PAC for stamping (docType defaults to `"1"` when empty) |
+| `StampCFDI(cfg, xmlContent, docType, fileType, commercio)` | Send a document to a PAC for stamping (`docType` defaults to `"1"`, `fileType` to `"1"`, `commercio` to `"0"` when empty) |
 
 ## SOAP / PAC
 
@@ -129,11 +129,11 @@ Request envelope:
     <ns1:generateInvoiceVersion4>
       <document>{escaped CFDI XML}</document>
       <documentType>{docType}</documentType>
-      <fileType>1</fileType>
+      <fileType>{fileType}</fileType>
       <cer></cer>
       <key></key>
       <password>{certificate password}</password>
-      <commercio>0</commercio>
+      <commercio>{commercio}</commercio>
     </ns1:generateInvoiceVersion4>
   </soap:Body>
 </soap:Envelope>
@@ -145,7 +145,9 @@ The operation namespace is the webservice `URL`. The CFDI document is escaped
 The `<documentType>` parameter is configurable per request via the optional
 `documentType` field on `CFDIRequest` (JSON key `documentType`). It is passed
 to `StampCFDI` as the `docType` argument; when empty (or omitted from the
-JSON), the default `"1"` (Ingreso) is used.
+JSON), the default `"1"` (Ingreso) is used. Likewise, `fileType`
+(`"0"`=TXT, `"1"`=XML, default `"1"`) and `commercio` (default `"0"`) are
+configurable via the `fileType` and `commercio` fields on `CFDIRequest`.
 
 `PACConfig` fields:
 

@@ -397,7 +397,7 @@ func TestBuildSOAPPayload(t *testing.T) {
 		invoicePassword = "cert-pass"
 	)
 	doc := `<cfdi:Comprobante><cfdi:Emisor/></cfdi:Comprobante>`
-	payload := BuildSOAPPayload(url, doc, "1", user, pass, invoicePassword)
+	payload := BuildSOAPPayload(url, doc, "1", "1", "0", user, pass, invoicePassword)
 
 	checks := []struct {
 		name string
@@ -442,7 +442,7 @@ func TestBuildSOAPPayloadGolden(t *testing.T) {
 	)
 	doc := `<cfdi:Comprobante><cfdi:Emisor/></cfdi:Comprobante>`
 
-	got := BuildSOAPPayload(url, doc, "1", user, pass, invoicePassword)
+	got := BuildSOAPPayload(url, doc, "1", "1", "0", user, pass, invoicePassword)
 
 	want := `<?xml version="1.0" encoding="utf-8"?>
 <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns1="https://cfdi.pac-provider.com/webservice">
@@ -488,7 +488,7 @@ func TestStampCFDIHeaders(t *testing.T) {
 		InvoicePassword: "certpass",
 	}
 
-	resp, err := StampCFDI(cfg, `<cfdi:Comprobante/>`, "")
+	resp, err := StampCFDI(cfg, `<cfdi:Comprobante/>`, "", "", "")
 	if err != nil {
 		t.Fatalf("StampCFDI failed: %s", err)
 	}
@@ -527,7 +527,7 @@ func TestStampCFDICustomSOAPAction(t *testing.T) {
 		SOAPAction: `"custom-action"`,
 	}
 
-	if _, err := StampCFDI(cfg, `<cfdi:Comprobante/>`, ""); err != nil {
+	if _, err := StampCFDI(cfg, `<cfdi:Comprobante/>`, "", "", ""); err != nil {
 		t.Fatalf("StampCFDI failed: %s", err)
 	}
 	if sa := lastReq.Header.Get("SOAPAction"); sa != `"custom-action"` {
@@ -548,14 +548,14 @@ func TestStampCFDIDocumentType(t *testing.T) {
 
 	cfg := &PACConfig{URL: server.URL}
 
-	if _, err := StampCFDI(cfg, `<cfdi:Comprobante/>`, ""); err != nil {
+	if _, err := StampCFDI(cfg, `<cfdi:Comprobante/>`, "", "", ""); err != nil {
 		t.Fatalf("StampCFDI failed: %s", err)
 	}
 	if !strings.Contains(string(body), "<documentType>1</documentType>") {
 		t.Errorf("expected default documentType 1, got body:\n%s", body)
 	}
 
-	if _, err := StampCFDI(cfg, `<cfdi:Comprobante/>`, "2"); err != nil {
+	if _, err := StampCFDI(cfg, `<cfdi:Comprobante/>`, "2", "", ""); err != nil {
 		t.Fatalf("StampCFDI failed: %s", err)
 	}
 	if !strings.Contains(string(body), "<documentType>2</documentType>") {

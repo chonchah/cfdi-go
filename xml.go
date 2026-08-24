@@ -32,6 +32,12 @@ type CFDIRequest struct {
 	// DocumentType is the SOAP documentType sent to the PAC. Empty means the
 	// default "1" (Ingreso) is used.
 	DocumentType string `json:"documentType,omitempty"`
+	// FileType is the SOAP fileType sent to the PAC: "0" = TXT, "1" = XML.
+	// Empty means the default "1" (XML) is used. The service always builds
+	// XML, so this should normally stay "1".
+	FileType string `json:"fileType,omitempty"`
+	// Commercio is the SOAP commercio flag sent to the PAC. Empty means "0".
+	Commercio string `json:"commercio,omitempty"`
 }
 
 // FromJSON decodes a CFDIRequest from its JSON representation.

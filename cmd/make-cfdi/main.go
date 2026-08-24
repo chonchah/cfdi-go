@@ -77,7 +77,7 @@ func makeCFDI(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		resp, err := cfdi.StampCFDI(pacCfg, xmlContent, req.DocumentType)
+		resp, err := cfdi.StampCFDI(pacCfg, xmlContent, req.DocumentType, req.FileType, req.Commercio)
 		if err != nil {
 			errJSON, _ := json.Marshal(map[string]string{
 				"error": fmt.Sprintf("PAC stamping failed: %s", err.Error()),

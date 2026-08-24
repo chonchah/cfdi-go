@@ -12,11 +12,21 @@ import (
 // literal "namespace" namespace (as the PHP SoapHeader('namespace', 'Auth',
 // ...) call sends it). If the PAC rejects the request, verify against
 // $client->__getLastRequest() / __getLastRequestHeaders() from PHP.
-func BuildSOAPPayload(url, document, docType, user, password, invoicePassword string) string {
+func BuildSOAPPayload(url, document, docType, fileType, commercio, user, password, invoicePassword string) string {
 	escaped := strings.ReplaceAll(document, "&", "&amp;")
 	escaped = strings.ReplaceAll(escaped, "<", "&lt;")
 	escaped = strings.ReplaceAll(escaped, ">", "&gt;")
 	escaped = strings.ReplaceAll(escaped, "\"", "&quot;")
+
+	if docType == "" {
+		docType = "1"
+	}
+	if fileType == "" {
+		fileType = "1"
+	}
+	if commercio == "" {
+		commercio = "0"
+	}
 
 	return fmt.Sprintf(`<?xml version="1.0" encoding="utf-8"?>
 <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns1="%s">
@@ -30,14 +40,14 @@ func BuildSOAPPayload(url, document, docType, user, password, invoicePassword st
     <ns1:generateInvoiceVersion4>
       <document>%s</document>
       <documentType>%s</documentType>
-      <fileType>1</fileType>
+      <fileType>%s</fileType>
       <cer></cer>
       <key></key>
       <password>%s</password>
-      <commercio>0</commercio>
+      <commercio>%s</commercio>
     </ns1:generateInvoiceVersion4>
   </soap:Body>
-</soap:Envelope>`, url, user, password, escaped, docType, invoicePassword)
+</soap:Envelope>`, url, user, password, escaped, docType, fileType, invoicePassword, commercio)
 }
 
 // ExtractPACResponseText extracts the meaningful text from a SOAP response.
