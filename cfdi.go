@@ -27,9 +27,13 @@ type CFDI struct {
 	FormaPago         string   `xml:"FormaPago,attr,omitempty"`
 	LugarExpedicion   string   `xml:"LugarExpedicion,attr"`
 	Confirmacion      string   `xml:"Confirmacion,attr,omitempty"`
-	NoCertificado     string   `xml:"NoCertificado,attr,omitempty"`
-	Certificado       string   `xml:"Certificado,attr,omitempty"`
-	Sello             string   `xml:"Sello,attr,omitempty"`
+	// NoCertificado, Certificado and Sello are always emitted, even when
+	// empty. The PAC requires their presence before stamping; omitting them
+	// triggers "El comprobante no contiene el número de serie del
+	// certificado de sello digital" (verified against cfdi360 sandbox).
+	NoCertificado string `xml:"NoCertificado,attr"`
+	Certificado   string `xml:"Certificado,attr"`
+	Sello         string `xml:"Sello,attr"`
 	Emisor            Emisor   `xml:"cfdi:Emisor"`
 	Receptor          Receptor `xml:"cfdi:Receptor"`
 	Conceptos         Conceptos

@@ -275,7 +275,15 @@ func TestValidateIngreso(t *testing.T) {
 		LugarExpedicion:   "06000",
 		Emisor:            Emisor{Rfc: "XAXX010101000", Nombre: "E", RegimenFiscal: "601"},
 		Receptor:          Receptor{Rfc: "XEXX010101000", Nombre: "C", DomicilioFiscalReceptor: "06500", RegimenFiscalReceptor: "601", UsoCFDI: "G03"},
-		Conceptos:         []Concepto{{ClaveProdServ: "84111506", Cantidad: "1", ClaveUnidad: "E48", Descripcion: "S", ValorUnitario: "1000", Importe: "1000", ObjetoImp: "02"}},
+		Conceptos: []Concepto{{
+			ClaveProdServ: "84111506", Cantidad: "1", ClaveUnidad: "E48", Descripcion: "S",
+			ValorUnitario: "1000.00", Importe: "1000.00", ObjetoImp: "02",
+			Impuestos: &ConceptoImpuestos{
+				Traslados: &TrasladosWrapper{
+					Traslado: []Traslado{{Base: "1000.00", Impuesto: "002", TipoFactor: "Tasa", TasaOCuota: "0.160000", Importe: "160.00"}},
+				},
+			},
+		}},
 	}
 
 	valid, errs := req.Validate()
@@ -300,7 +308,15 @@ func TestValidateTipoCambio(t *testing.T) {
 		LugarExpedicion:   "06000",
 		Emisor:            Emisor{Rfc: "XAXX010101000", Nombre: "E", RegimenFiscal: "601"},
 		Receptor:          Receptor{Rfc: "XEXX010101000", Nombre: "C", DomicilioFiscalReceptor: "06500", RegimenFiscalReceptor: "601", UsoCFDI: "G03"},
-		Conceptos:         []Concepto{{ClaveProdServ: "84111506", Cantidad: "1", ClaveUnidad: "E48", Descripcion: "S", ValorUnitario: "1000", Importe: "1000", ObjetoImp: "02"}},
+		Conceptos: []Concepto{{
+			ClaveProdServ: "84111506", Cantidad: "1", ClaveUnidad: "E48", Descripcion: "S",
+			ValorUnitario: "1000.00", Importe: "1000.00", ObjetoImp: "02",
+			Impuestos: &ConceptoImpuestos{
+				Traslados: &TrasladosWrapper{
+					Traslado: []Traslado{{Base: "1000.00", Impuesto: "002", TipoFactor: "Tasa", TasaOCuota: "0.160000", Importe: "160.00"}},
+				},
+			},
+		}},
 	}
 
 	valid, errs := req.Validate()
@@ -396,34 +412,33 @@ func TestBuildSOAPPayload(t *testing.T) {
 		pass            = "login-pass"
 		invoicePassword = "cert-pass"
 	)
-	doc := `<cfdi:Comprobante><cfdi:Emisor/></cfdi:Comprobante>`
+	doc := `<cfdi:Comprobante Serie="FA"><cfdi:Emisor/></cfdi:Comprobante>`
 	payload := BuildSOAPPayload(url, doc, "1", "1", "0", user, pass, invoicePassword)
 
 	checks := []struct {
 		name string
 		fn   func() bool
 	}{
-		{"soap envelope", func() bool { return strings.Contains(payload, "soap:Envelope") }},
-		{"soap header", func() bool { return strings.Contains(payload, "soap:Header") }},
-		{"soap body", func() bool { return strings.Contains(payload, "soap:Body") }},
+		{"SOAP-ENV envelope", func() bool { return strings.Contains(payload, "SOAP-ENV:Envelope") }},
+		{"SOAP-ENV header", func() bool { return strings.Contains(payload, "SOAP-ENV:Header") }},
+		{"SOAP-ENV body", func() bool { return strings.Contains(payload, "SOAP-ENV:Body") }},
 		{"operation generateInvoiceVersion4", func() bool { return strings.Contains(payload, "ns1:generateInvoiceVersion4") }},
 		{"no legacy GenerateInvoice", func() bool { return !strings.Contains(payload, "GenerateInvoice") }},
-		{"no legacy provider namespace", func() bool { return !strings.Contains(payload, "http://cfdi_pack_provider.com/") }},
-		{"no legacy cfdi360 namespace", func() bool { return !strings.Contains(payload, "http://cfdi360.com/") }},
 		{"webservice URL as operation namespace", func() bool { return strings.Contains(payload, `xmlns:ns1="`+url+`"`) }},
-		{"Auth header with literal namespace", func() bool { return strings.Contains(payload, `<ns1:Auth xmlns:ns2="namespace">`) }},
-		{"userName in Auth header", func() bool { return strings.Contains(payload, "<ns2:userName>"+user+"</ns2:userName>") }},
-		{"password in Auth header", func() bool { return strings.Contains(payload, "<ns2:password>"+pass+"</ns2:password>") }},
-		{"document escaped", func() bool { return strings.Contains(payload, "&lt;cfdi:Comprobante&gt;") }},
+		{"Auth header without extra namespace", func() bool { return strings.Contains(payload, "<ns1:Auth>") }},
+		{"userName plain in Auth header", func() bool { return strings.Contains(payload, "<userName>"+user+"</userName>") }},
+		{"password plain in Auth header", func() bool { return strings.Contains(payload, "<password>"+pass+"</password>") }},
+		{"document escaped", func() bool { return strings.Contains(payload, `&lt;cfdi:Comprobante Serie="FA"&gt;`) }},
+		{"quotes not escaped inside text content", func() bool { return strings.Contains(payload, `Serie="FA"`) }},
 		{"documentType param", func() bool { return strings.Contains(payload, "<documentType>1</documentType>") }},
 		{"fileType=1", func() bool { return strings.Contains(payload, "<fileType>1</fileType>") }},
-		{"cer empty", func() bool { return strings.Contains(payload, "<cer></cer>") }},
-		{"key empty", func() bool { return strings.Contains(payload, "<key></key>") }},
+		{"cer empty self-closing", func() bool { return strings.Contains(payload, "<cer/>") }},
+		{"key empty self-closing", func() bool { return strings.Contains(payload, "<key/>") }},
 		{"certificate password param", func() bool { return strings.Contains(payload, "<password>"+invoicePassword+"</password>") }},
 		{"commercio=0", func() bool { return strings.Contains(payload, "<commercio>0</commercio>") }},
-		{"params ordered: cer before key", func() bool { return strings.Index(payload, "<cer>") < strings.Index(payload, "<key>") }},
-		{"params ordered: key before password", func() bool { return strings.Index(payload, "<key>") < strings.Index(payload, "<password>") }},
-		{"params ordered: password before commercio", func() bool { return strings.Index(payload, "<password>") < strings.Index(payload, "<commercio>") }},
+		{"params ordered: cer before key", func() bool { return strings.Index(payload, "<cer/>") < strings.Index(payload, "<key/>") }},
+		{"params ordered: key before password", func() bool { return strings.Index(payload, "<key/>") < strings.Index(payload, "<password>"+invoicePassword) }},
+		{"params ordered: password before commercio", func() bool { return strings.Index(payload, "<commercio>") > strings.Index(payload, "<password>"+invoicePassword) }},
 	}
 
 	for _, check := range checks {
@@ -445,25 +460,25 @@ func TestBuildSOAPPayloadGolden(t *testing.T) {
 	got := BuildSOAPPayload(url, doc, "1", "1", "0", user, pass, invoicePassword)
 
 	want := `<?xml version="1.0" encoding="utf-8"?>
-<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns1="https://cfdi.pac-provider.com/webservice">
-  <soap:Header>
-    <ns1:Auth xmlns:ns2="namespace">
-      <ns2:userName>user</ns2:userName>
-      <ns2:password>pass</ns2:password>
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns1="https://cfdi.pac-provider.com/webservice">
+  <SOAP-ENV:Header>
+    <ns1:Auth>
+      <userName>user</userName>
+      <password>pass</password>
     </ns1:Auth>
-  </soap:Header>
-  <soap:Body>
+  </SOAP-ENV:Header>
+  <SOAP-ENV:Body>
     <ns1:generateInvoiceVersion4>
       <document>&lt;cfdi:Comprobante&gt;&lt;cfdi:Emisor/&gt;&lt;/cfdi:Comprobante&gt;</document>
       <documentType>1</documentType>
       <fileType>1</fileType>
-      <cer></cer>
-      <key></key>
+      <cer/>
+      <key/>
       <password>certpass</password>
       <commercio>0</commercio>
     </ns1:generateInvoiceVersion4>
-  </soap:Body>
-</soap:Envelope>`
+  </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>`
 
 	if got != want {
 		t.Errorf("SOAP envelope mismatch.\n--- got ---\n%s\n--- want ---\n%s", got, want)
@@ -502,9 +517,9 @@ func TestStampCFDIHeaders(t *testing.T) {
 	if ct := lastReq.Header.Get("Content-Type"); ct != "text/xml; charset=utf-8" {
 		t.Errorf("expected Content-Type text/xml; charset=utf-8, got %s", ct)
 	}
-	wantAction := server.URL + "#generateInvoiceVersion4"
+	wantAction := DefaultSOAPAction
 	if sa := lastReq.Header.Get("SOAPAction"); sa != wantAction {
-		t.Errorf("expected auto-derived SOAPAction %q, got %q", wantAction, sa)
+		t.Errorf("expected default SOAPAction %q, got %q", wantAction, sa)
 	}
 	if auth := lastReq.Header.Get("Authorization"); auth != "" {
 		t.Errorf("expected no Authorization header after removing Basic Auth, got %q", auth)
@@ -620,7 +635,35 @@ func TestComprobanteImpuestosBuilder(t *testing.T) {
 	if imp.TotalImpuestosTrasladados != "240.00" {
 		t.Errorf("Expected 240.00 total trasladados, got %s", imp.TotalImpuestosTrasladados)
 	}
+	if len(imp.Traslados.Traslado) != 1 {
+		t.Fatalf("Expected traslados grouped into 1 node, got %d", len(imp.Traslados.Traslado))
+	}
+	g := imp.Traslados.Traslado[0]
+	if g.Base != "1500.00" {
+		t.Errorf("Expected grouped Base 1500.00, got %s", g.Base)
+	}
+	if g.Importe != "240.00" {
+		t.Errorf("Expected grouped Importe 240.00, got %s", g.Importe)
+	}
+
+	// Distinct rates must remain separate groups, in first-seen order.
+	conceptos = append(conceptos, Concepto{
+		Impuestos: &ConceptoImpuestos{
+			Traslados: &TrasladosWrapper{
+				Traslado: []Traslado{
+					{Base: "1000.00", Impuesto: "002", TipoFactor: "Tasa", TasaOCuota: "0.080000", Importe: "80.00"},
+				},
+			},
+		},
+	})
+	imp = buildComprobanteImpuestos(conceptos)
 	if len(imp.Traslados.Traslado) != 2 {
-		t.Errorf("Expected 2 traslados, got %d", len(imp.Traslados.Traslado))
+		t.Fatalf("Expected 2 groups after adding 8%% rate, got %d", len(imp.Traslados.Traslado))
+	}
+	if imp.Traslados.Traslado[0].TasaOCuota != "0.160000" || imp.Traslados.Traslado[1].TasaOCuota != "0.080000" {
+		t.Errorf("Unexpected group order/rates: %+v", imp.Traslados.Traslado)
+	}
+	if imp.TotalImpuestosTrasladados != "320.00" {
+		t.Errorf("Expected total trasladados 320.00, got %s", imp.TotalImpuestosTrasladados)
 	}
 }

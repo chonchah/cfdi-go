@@ -3,7 +3,8 @@ package cfdi
 import (
 	"encoding/json"
 	"encoding/xml"
-	"fmt"
+	"strings"
+	"time"
 )
 
 // CFDIRequest is the structured input used to generate a CFDI 4.0.
@@ -46,15 +47,24 @@ func (req *CFDIRequest) FromJSON(data []byte) error {
 }
 
 // ParseCFDItoXML builds the CFDI 4.0 XML string from the request.
+//
+// Notes verified against the cfdi360 sandbox:
+//   - Sello/NoCertificado/Certificado are always emitted (empty), see cfdi.go.
+//   - A stale or missing Fecha is refreshed: the SAT rejects comprobantes
+//     older than 72 hours.
+//   - An explicit zero Descuento is omitted entirely.
+//   - Concept-level amounts are emitted exactly as provided; callers must
+//     send tax Importes already rounded to 2 decimals (Validate enforces
+//     this). Global tax totals are computed as the exact sum of the given
+//     values using integer arithmetic.
 func (req *CFDIRequest) ParseCFDItoXML() string {
 	cfdiXML := &CFDI{
 		Version:           req.Version,
 		Serie:             req.Serie,
 		Folio:             req.Folio,
-		Fecha:             req.Fecha,
+		Fecha:             ensureFreshFecha(req.Fecha),
 		CondicionesDePago: req.CondicionesDePago,
 		SubTotal:          req.SubTotal,
-		Descuento:         req.Descuento,
 		Moneda:            req.Moneda,
 		TipoCambio:        req.TipoCambio,
 		Total:             req.Total,
@@ -68,6 +78,10 @@ func (req *CFDIRequest) ParseCFDItoXML() string {
 		XmlnsXsi:          "http://www.w3.org/2001/XMLSchema-instance",
 		Emisor:            req.Emisor,
 		Receptor:          req.Receptor,
+	}
+
+	if d := strings.TrimSpace(req.Descuento); d != "" && !isZeroAmount(d) {
+		cfdiXML.Descuento = d
 	}
 
 	if req.TipoDeComprobante == "P" {
@@ -98,55 +112,107 @@ func (req *CFDIRequest) ParseCFDItoXML() string {
 	return xml.Header + string(xmlBytes)
 }
 
+// ensureFreshFecha returns fecha when it is a valid CFDI timestamp within
+// the SAT 72-hour window (allowing one hour of clock skew into the future);
+// otherwise it returns the current local time in CFDI format.
+func ensureFreshFecha(fecha string) string {
+	now := time.Now()
+	if fecha != "" {
+		if t, err := time.ParseInLocation("2006-01-02T15:04:05", fecha, now.Location()); err == nil {
+			d := now.Sub(t)
+			if d >= -time.Hour && d < 72*time.Hour {
+				return fecha
+			}
+		}
+	}
+	return now.Format("2006-01-02T15:04:05")
+}
+
+// buildComprobanteImpuestos derives the Comprobante level Impuestos node
+// from the concept taxes. Global Traslado/Retencion nodes are grouped by
+// (Impuesto, TipoFactor, TasaOCuota) as the SAT requires; their Base and
+// Importe are the exact integer-cent sums of the grouped concept values,
+// rendered with two decimals.
 func buildComprobanteImpuestos(conceptos []Concepto) *Impuestos {
-	var totalTrasladados float64
-	var totalRetenidos float64
-	var allTraslados []Traslado
-	var allRetenciones []Retencion
-	hasTraslados := false
-	hasRetenciones := false
+	type agg struct {
+		baseCents, importeCents int64
+	}
+	traslados := map[string]*agg{}
+	retenciones := map[string]*agg{}
+	var trasladoOrder, retencionOrder []string
 
 	for _, c := range conceptos {
-		if c.Impuestos != nil {
-			if c.Impuestos.Traslados != nil {
-				for _, t := range c.Impuestos.Traslados.Traslado {
-					allTraslados = append(allTraslados, t)
-					totalTrasladados += parseFloat(t.Importe)
-					hasTraslados = true
+		if c.Impuestos == nil {
+			continue
+		}
+		if c.Impuestos.Traslados != nil {
+			for _, t := range c.Impuestos.Traslados.Traslado {
+				k := t.Impuesto + "|" + t.TipoFactor + "|" + t.TasaOCuota
+				a := traslados[k]
+				if a == nil {
+					a = &agg{}
+					traslados[k] = a
+					trasladoOrder = append(trasladoOrder, k)
 				}
+				a.baseCents += amountCents(t.Base)
+				a.importeCents += amountCents(t.Importe)
 			}
-			if c.Impuestos.Retenciones != nil {
-				for _, r := range c.Impuestos.Retenciones.Retencion {
-					allRetenciones = append(allRetenciones, r)
-					totalRetenidos += parseFloat(r.Importe)
-					hasRetenciones = true
+		}
+		if c.Impuestos.Retenciones != nil {
+			for _, r := range c.Impuestos.Retenciones.Retencion {
+				k := r.Impuesto + "|" + r.TipoFactor + "|" + r.TasaOCuota
+				a := retenciones[k]
+				if a == nil {
+					a = &agg{}
+					retenciones[k] = a
+					retencionOrder = append(retencionOrder, k)
 				}
+				a.baseCents += amountCents(r.Base)
+				a.importeCents += amountCents(r.Importe)
 			}
 		}
 	}
 
-	if !hasTraslados && !hasRetenciones {
+	if len(trasladoOrder) == 0 && len(retencionOrder) == 0 {
 		return nil
 	}
 
 	imp := &Impuestos{}
-	if hasTraslados {
-		imp.TotalImpuestosTrasladados = formatFloat(totalTrasladados)
-		imp.Traslados = &TrasladosWrapper{Traslado: allTraslados}
+	if len(trasladoOrder) > 0 {
+		var total int64
+		grouped := make([]Traslado, 0, len(trasladoOrder))
+		for _, k := range trasladoOrder {
+			a := traslados[k]
+			parts := strings.SplitN(k, "|", 3)
+			grouped = append(grouped, Traslado{
+				Base:       formatCents(a.baseCents),
+				Impuesto:   parts[0],
+				TipoFactor: parts[1],
+				TasaOCuota: parts[2],
+				Importe:    formatCents(a.importeCents),
+			})
+			total += a.importeCents
+		}
+		imp.TotalImpuestosTrasladados = formatCents(total)
+		imp.Traslados = &TrasladosWrapper{Traslado: grouped}
 	}
-	if hasRetenciones {
-		imp.TotalImpuestosRetenidos = formatFloat(totalRetenidos)
-		imp.Retenciones = &RetencionesWrapper{Retencion: allRetenciones}
+	if len(retencionOrder) > 0 {
+		var total int64
+		grouped := make([]Retencion, 0, len(retencionOrder))
+		for _, k := range retencionOrder {
+			a := retenciones[k]
+			parts := strings.SplitN(k, "|", 3)
+			grouped = append(grouped, Retencion{
+				Base:       formatCents(a.baseCents),
+				Impuesto:   parts[0],
+				TipoFactor: parts[1],
+				TasaOCuota: parts[2],
+				Importe:    formatCents(a.importeCents),
+			})
+			total += a.importeCents
+		}
+		imp.TotalImpuestosRetenidos = formatCents(total)
+		imp.Retenciones = &RetencionesWrapper{Retencion: grouped}
 	}
 	return imp
-}
-
-func parseFloat(s string) float64 {
-	var f float64
-	fmt.Sscanf(s, "%f", &f)
-	return f
-}
-
-func formatFloat(f float64) string {
-	return fmt.Sprintf("%.2f", f)
 }

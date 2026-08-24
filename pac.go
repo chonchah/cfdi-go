@@ -20,17 +20,20 @@ type PACConfig struct {
 	// InvoicePassword is the certificate (FIEL/CSD) password, sent as the
 	// "password" parameter of the generateInvoiceVersion4 body.
 	InvoicePassword string
-	// SOAPAction is the HTTP SOAPAction header value. When empty it is
-	// derived automatically as URL + "#generateInvoiceVersion4".
+	// SOAPAction is the HTTP SOAPAction header value. When empty it
+	// defaults to DefaultSOAPAction, the value accepted by cfdi360.
 	SOAPAction string
 	// Timeout is the request timeout in seconds.
 	Timeout int
 }
 
+// DefaultSOAPAction is the SOAPAction header value proven against the
+// cfdi360 generateInvoiceVersion4 operation.
+const DefaultSOAPAction = "urn:document#documentServer#generateInvoiceVersion4"
+
 // DefaultConfig returns a PACConfig with sensible defaults. The default URL
 // points to a placeholder provider; set URL and credentials explicitly in
-// production. SOAPAction is left empty so it is derived from URL as
-// URL + "#generateInvoiceVersion4".
+// production. SOAPAction is left empty so DefaultSOAPAction is used.
 func DefaultConfig() *PACConfig {
 	return &PACConfig{
 		URL:     "https://api.cfdi_pack_provider.com/cfdi",
@@ -77,7 +80,7 @@ func StampCFDI(cfg *PACConfig, xmlContent, docType, fileType, commercio string) 
 
 	soapAction := cfg.SOAPAction
 	if soapAction == "" {
-		soapAction = cfg.URL + "#generateInvoiceVersion4"
+		soapAction = DefaultSOAPAction
 	}
 	req.Header.Set("SOAPAction", soapAction)
 
