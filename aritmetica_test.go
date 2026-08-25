@@ -146,11 +146,58 @@ func TestValidateRejectsSubTotalMismatch(t *testing.T) {
 }
 
 func TestValidateRejectsMoreThanTwoDecimals(t *testing.T) {
+	// Monto fields (Importe, Descuento, SubTotal, Total, impuestos) still max 2 decimals
 	req := z4Request()
-	req.Conceptos[0].ValorUnitario = "603.455"
+	req.Conceptos[0].Importe = "603.455"
 	valid, errs := req.Validate()
 	if valid {
-		t.Error("expected validation failure for monetary field with 3 decimals")
+		t.Error("expected validation failure for Importe with 3 decimals")
+	}
+	found := false
+	for _, e := range errs {
+		if strings.Contains(e, "decimales") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("unexpected errors: %v", errs)
+	}
+}
+
+func TestValidateAllowsSixDecimalValorUnitario(t *testing.T) {
+	// 1 * 100.123456 = 100.123456 -> round to 100.12
+	// IVA 16%: 100.12 * 0.16 = 16.0192 -> round to 16.02
+	// SubTotal = 100.12, Total = 100.12 + 16.02 = 116.14
+	req := &CFDIRequest{
+		Version: "4.0", Serie: "A", Folio: "1",
+		Fecha: time.Now().Format("2006-01-02T15:04:05"),
+		SubTotal: "100.12", Moneda: "MXN", Total: "116.14",
+		TipoDeComprobante: "I", Exportacion: "01", MetodoPago: "PUE", FormaPago: "01",
+		LugarExpedicion: "64000",
+		Emisor:          Emisor{Rfc: "XAXX010101000", Nombre: "E", RegimenFiscal: "601"},
+		Receptor:        Receptor{Rfc: "XEXX010101000", Nombre: "C", DomicilioFiscalReceptor: "06500", RegimenFiscalReceptor: "601", UsoCFDI: "G03"},
+		Conceptos: []Concepto{{
+			Cantidad: "1", ClaveProdServ: "84111506", ClaveUnidad: "E48", Descripcion: "x",
+			ValorUnitario: "100.123456", Importe: "100.12", ObjetoImp: "02",
+			Impuestos: &ConceptoImpuestos{
+				Traslados: &TrasladosWrapper{
+					Traslado: []Traslado{{Base: "100.12", Impuesto: "002", TipoFactor: "Tasa", TasaOCuota: "0.160000", Importe: "16.02"}},
+				},
+			},
+		}},
+	}
+	valid, errs := req.Validate()
+	if !valid {
+		t.Errorf("expected valid request with 6-decimal ValorUnitario, got: %v", errs)
+	}
+}
+
+func TestValidateRejectsSevenDecimalValorUnitario(t *testing.T) {
+	req := z4Request()
+	req.Conceptos[0].ValorUnitario = "603.4555555"
+	valid, errs := req.Validate()
+	if valid {
+		t.Error("expected validation failure for ValorUnitario with 7 decimals")
 	}
 	found := false
 	for _, e := range errs {

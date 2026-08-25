@@ -130,6 +130,28 @@ func (req *CFDIRequest) validateAritmetica() []string {
 		}
 		return parsed
 	}
+	// conceptField validates a concepto-level field (Cantidad, ValorUnitario)
+	// allowing up to 6 decimals per SAT rules.
+	conceptField := func(label, val string, optional bool) int64 {
+		v := strings.TrimSpace(val)
+		if v == "" {
+			if optional {
+				return 0
+			}
+			errs = append(errs, fmt.Sprintf("El campo %s es requerido", label))
+			return 0
+		}
+		if !hasMaxDec(v, decScale) {
+			errs = append(errs, fmt.Sprintf("El campo %s tiene más de %d decimales: \"%s\"", label, decScale, val))
+			return 0
+		}
+		parsed, ok := parseScaled(v)
+		if !ok {
+			errs = append(errs, fmt.Sprintf("El campo %s no es un valor válido: \"%s\"", label, val))
+			return 0
+		}
+		return parsed
+	}
 	rate := func(label, val string) (int64, bool) {
 		parsed, ok := parseScaled(val)
 		if !ok {
@@ -151,7 +173,7 @@ func (req *CFDIRequest) validateAritmetica() []string {
 		sumSub += importe - desc
 
 		if cant, ok := rate(fmt.Sprintf("Cantidad del Concepto %d", n), c.Cantidad); ok {
-			vu := amount(fmt.Sprintf("ValorUnitario del Concepto %d", n), c.ValorUnitario, false)
+			vu := conceptField(fmt.Sprintf("ValorUnitario del Concepto %d", n), c.ValorUnitario, false)
 			if expected := mulRoundCents(cant, vu); expected != roundToCents(importe) {
 				fail("El campo Importe del Concepto %d (%s) no es igual al redondeo de la Cantidad por el ValorUnitario (%s)",
 					n, formatCents(roundToCents(importe)), formatCents(expected))
