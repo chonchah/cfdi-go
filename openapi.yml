@@ -109,13 +109,6 @@ paths:
                           MonedaP: MXN
                           TipoCambioP: "1"
                           Monto: "1160.00"
-                          ImpuestosP:
-                            TrasladosP:
-                              - BaseP: "1000.00"
-                                ImpuestoP: "002"
-                                TipoFactorP: Tasa
-                                TasaOCuotaP: "0.160000"
-                                ImporteP: "160.00"
                           DoctoRelacionado:
                             - IdDocumento: UUID-DE-LA-FACTURA-ORIGINAL-PPD
                               Serie: A
@@ -134,6 +127,13 @@ paths:
                                     TipoFactorDR: Tasa
                                     TasaOCuotaDR: "0.160000"
                                     ImporteDR: "160.00"
+                          ImpuestosP:
+                            TrasladosP:
+                              - BaseP: "1000.00"
+                                ImpuestoP: "002"
+                                TipoFactorP: Tasa
+                                TasaOCuotaP: "0.160000"
+                                ImporteP: "160.00"
                   timbrar: false
       responses:
         "200":
