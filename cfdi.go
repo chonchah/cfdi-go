@@ -120,6 +120,39 @@ type Impuestos struct {
 	Retenciones               *RetencionesWrapper `xml:"cfdi:Retenciones,omitempty" json:"Retenciones,omitempty"`
 }
 
+// ImpuestosP are the total taxes of a payment (pago20:ImpuestosP).
+type ImpuestosP struct {
+	TotalImpuestosTrasladadosP string                `xml:"TotalImpuestosTrasladadosP,attr,omitempty" json:"TotalImpuestosTrasladadosP,omitempty"`
+	TotalImpuestosRetenidosP   string                `xml:"TotalImpuestosRetenidosP,attr,omitempty" json:"TotalImpuestosRetenidosP,omitempty"`
+	TrasladosP                 *TrasladosPWrapper    `xml:"pago20:TrasladosP,omitempty" json:"TrasladosP,omitempty"`
+	RetencionesP               *RetencionesPWrapper  `xml:"pago20:RetencionesP,omitempty" json:"RetencionesP,omitempty"`
+}
+
+// TrasladosPWrapper wraps a list of traslados at payment level.
+type TrasladosPWrapper struct {
+	TrasladoP []TrasladoP `xml:"pago20:TrasladoP" json:"TrasladoP"`
+}
+
+// RetencionesPWrapper wraps a list of retenciones at payment level.
+type RetencionesPWrapper struct {
+	RetencionP []RetencionP `xml:"pago20:RetencionP" json:"RetencionP"`
+}
+
+// TrasladoP represents an additive tax at payment level.
+type TrasladoP struct {
+	BaseP       string `xml:"BaseP,attr" json:"BaseP"`
+	ImpuestoP   string `xml:"ImpuestoP,attr" json:"ImpuestoP"`
+	TipoFactorP string `xml:"TipoFactorP,attr" json:"TipoFactorP"`
+	TasaOCuotaP string `xml:"TasaOCuotaP,attr" json:"TasaOCuotaP"`
+	ImporteP    string `xml:"ImporteP,attr" json:"ImporteP"`
+}
+
+// RetencionP represents a withholding tax at payment level.
+type RetencionP struct {
+	ImpuestoP   string `xml:"ImpuestoP,attr" json:"ImpuestoP"`
+	ImporteP    string `xml:"ImporteP,attr" json:"ImporteP"`
+}
+
 // Complemento holds tax complements, currently Pagos 2.0.
 type Complemento struct {
 	Pagos *Pagos `xml:"pago20:Pagos,omitempty" json:"Pagos,omitempty"`
@@ -146,6 +179,7 @@ type Pago struct {
 	MonedaP          string             `xml:"MonedaP,attr" json:"MonedaP"`
 	TipoCambioP      string             `xml:"TipoCambioP,attr,omitempty" json:"TipoCambioP,omitempty"`
 	Monto            string             `xml:"Monto,attr" json:"Monto"`
+	ImpuestosP       *ImpuestosP        `xml:"pago20:ImpuestosP,omitempty" json:"ImpuestosP,omitempty"`
 	DoctoRelacionado []DoctoRelacionado `xml:"pago20:DoctoRelacionado" json:"DoctoRelacionado"`
 }
 

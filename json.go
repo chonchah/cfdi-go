@@ -59,3 +59,26 @@ func (didr *DoctoImpuestosDR) UnmarshalJSON(data []byte) error {
 	}
 	return nil
 }
+
+// UnmarshalJSON allows simpler JSON input for payment-level taxes.
+func (ip *ImpuestosP) UnmarshalJSON(data []byte) error {
+	type alias struct {
+		TotalImpuestosTrasladadosP string     `json:"TotalImpuestosTrasladadosP,omitempty"`
+		TotalImpuestosRetenidosP   string     `json:"TotalImpuestosRetenidosP,omitempty"`
+		TrasladosP                 []TrasladoP `json:"TrasladosP,omitempty"`
+		RetencionesP               []RetencionP `json:"RetencionesP,omitempty"`
+	}
+	var a alias
+	if err := json.Unmarshal(data, &a); err != nil {
+		return err
+	}
+	ip.TotalImpuestosTrasladadosP = a.TotalImpuestosTrasladadosP
+	ip.TotalImpuestosRetenidosP = a.TotalImpuestosRetenidosP
+	if a.TrasladosP != nil {
+		ip.TrasladosP = &TrasladosPWrapper{TrasladoP: a.TrasladosP}
+	}
+	if a.RetencionesP != nil {
+		ip.RetencionesP = &RetencionesPWrapper{RetencionP: a.RetencionesP}
+	}
+	return nil
+}

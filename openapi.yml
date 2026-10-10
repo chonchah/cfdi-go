@@ -109,6 +109,13 @@ paths:
                           MonedaP: MXN
                           TipoCambioP: "1"
                           Monto: "1160.00"
+                          ImpuestosP:
+                            TrasladosP:
+                              - BaseP: "1000.00"
+                                ImpuestoP: "002"
+                                TipoFactorP: Tasa
+                                TasaOCuotaP: "0.160000"
+                                ImporteP: "160.00"
                           DoctoRelacionado:
                             - IdDocumento: UUID-DE-LA-FACTURA-ORIGINAL-PPD
                               Serie: A
@@ -481,6 +488,8 @@ components:
           type: string
           description: Monto del pago
           example: "1160.00"
+        ImpuestosP:
+          $ref: "#/components/schemas/ImpuestosP"
         DoctoRelacionado:
           type: array
           items:
@@ -566,6 +575,71 @@ components:
         ImporteDR:
           type: string
           example: "160.00"
+
+    ImpuestosP:
+      type: object
+      properties:
+        TotalImpuestosTrasladadosP:
+          type: string
+          description: Total de impuestos trasladados en el pago
+          example: "160.00"
+        TotalImpuestosRetenidosP:
+          type: string
+          description: Total de impuestos retenidos en el pago
+          example: "0.00"
+        TrasladosP:
+          type: array
+          items:
+            $ref: "#/components/schemas/TrasladoP"
+        RetencionesP:
+          type: array
+          items:
+            $ref: "#/components/schemas/RetencionP"
+
+    TrasladoP:
+      type: object
+      required:
+        - BaseP
+        - ImpuestoP
+        - TipoFactorP
+        - TasaOCuotaP
+        - ImporteP
+      properties:
+        BaseP:
+          type: string
+          description: Base del impuesto trasladado
+          example: "1000.00"
+        ImpuestoP:
+          type: string
+          description: Tipo de impuesto (catálogo c_Impuesto)
+          example: "002"
+        TipoFactorP:
+          type: string
+          description: Tipo de factor (Tasa, Cuota, Exento)
+          example: Tasa
+        TasaOCuotaP:
+          type: string
+          description: Tasa o cuota del impuesto
+          example: "0.160000"
+        ImporteP:
+          type: string
+          description: Importe del impuesto trasladado
+          example: "160.00"
+
+    RetencionP:
+      type: object
+      required:
+        - ImpuestoP
+        - ImporteP
+      properties:
+        ImpuestoP:
+          type: string
+          description: Tipo de impuesto retenido (catálogo c_Impuesto)
+          example: "001"
+        ImporteP:
+          type: string
+          description: Importe del impuesto retenido
+          example: "100.00"
 
     PACResponse:
       type: object

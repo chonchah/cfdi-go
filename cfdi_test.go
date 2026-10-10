@@ -160,6 +160,19 @@ func TestGeneratePagoXML(t *testing.T) {
 						FormaDePagoP: "03",
 						MonedaP:      "MXN",
 						Monto:        "1160.00",
+						ImpuestosP: &ImpuestosP{
+							TrasladosP: &TrasladosPWrapper{
+								TrasladoP: []TrasladoP{
+									{
+										BaseP:       "1000.00",
+										ImpuestoP:   "002",
+										TipoFactorP: "Tasa",
+										TasaOCuotaP: "0.160000",
+										ImporteP:    "160.00",
+									},
+								},
+							},
+						},
 						DoctoRelacionado: []DoctoRelacionado{
 							{
 								IdDocumento:     "UUID-DE-LA-FACTURA-ORIGINAL-PPD",
@@ -207,6 +220,9 @@ func TestGeneratePagoXML(t *testing.T) {
 		{"MontoTotalPagos", func() bool { return strings.Contains(xmlOut, `MontoTotalPagos="1160.00"`) }},
 		{"Pago element", func() bool { return strings.Contains(xmlOut, "pago20:Pago") }},
 		{"TipoCambioP defaults to 1 for MXN", func() bool { return strings.Contains(xmlOut, `TipoCambioP="1"`) }},
+		{"ImpuestosP element", func() bool { return strings.Contains(xmlOut, "pago20:ImpuestosP") }},
+		{"TrasladoP element", func() bool { return strings.Contains(xmlOut, "pago20:TrasladoP") }},
+		{"ImporteP", func() bool { return strings.Contains(xmlOut, `ImporteP="160.00"`) }},
 		{"FechaPago", func() bool { return strings.Contains(xmlOut, `FechaPago="2026-07-15T14:25:00"`) }},
 		{"DoctoRelacionado element", func() bool { return strings.Contains(xmlOut, "pago20:DoctoRelacionado") }},
 		{"IdDocumento", func() bool { return strings.Contains(xmlOut, `IdDocumento="UUID-DE-LA-FACTURA-ORIGINAL-PPD"`) }},
