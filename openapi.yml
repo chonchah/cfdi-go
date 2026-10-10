@@ -113,7 +113,7 @@ paths:
                               Serie: A
                               Folio: "100"
                               MonedaDR: MXN
-                              EquivMonedaDR: "1"
+                              EquivalenciaDR: "1"
                               NumParcialidad: "1"
                               ImpSaldoAnt: "1160.00"
                               ImpPagado: "1160.00"
@@ -486,7 +486,6 @@ components:
       required:
         - IdDocumento
         - MonedaDR
-        - EquivMonedaDR
         - NumParcialidad
         - ImpSaldoAnt
         - ImpPagado
@@ -509,9 +508,9 @@ components:
           type: string
           description: Moneda del documento relacionado
           example: MXN
-        EquivMonedaDR:
+        EquivalenciaDR:
           type: string
-          description: Equivalencia monetaria
+          description: Equivalencia monetaria (requerida si MonedaDR difiere de MonedaP)
           example: "1"
         NumParcialidad:
           type: string

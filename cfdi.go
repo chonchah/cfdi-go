@@ -151,10 +151,10 @@ type Pago struct {
 // DoctoRelacionado links a payment to the original invoice.
 type DoctoRelacionado struct {
 	IdDocumento      string            `xml:"IdDocumento,attr" json:"IdDocumento"`
-	Serie            string            `xml:"Serie,attr" json:"Serie"`
-	Folio            string            `xml:"Folio,attr" json:"Folio"`
+	Serie            string            `xml:"Serie,attr,omitempty" json:"Serie,omitempty"`
+	Folio            string            `xml:"Folio,attr,omitempty" json:"Folio,omitempty"`
 	MonedaDR         string            `xml:"MonedaDR,attr" json:"MonedaDR"`
-	EquivMonedaDR    string            `xml:"EquivMonedaDR,attr" json:"EquivMonedaDR"`
+	EquivalenciaDR   string            `xml:"EquivalenciaDR,attr,omitempty" json:"EquivalenciaDR,omitempty"`
 	NumParcialidad   string            `xml:"NumParcialidad,attr" json:"NumParcialidad"`
 	ImpSaldoAnt      string            `xml:"ImpSaldoAnt,attr" json:"ImpSaldoAnt"`
 	ImpPagado        string            `xml:"ImpPagado,attr" json:"ImpPagado"`
