@@ -91,6 +91,19 @@ func (req *CFDIRequest) Validate() (bool, []string) {
 		if req.Receptor.UsoCFDI != "CP01" {
 			errs = append(errs, "Receptor.UsoCFDI must be CP01 for TipoDeComprobante P")
 		}
+		if req.Complemento != nil && req.Complemento.Pagos != nil {
+			for i, pago := range req.Complemento.Pagos.Pago {
+				if pago.MonedaP == "" {
+					errs = append(errs, fmt.Sprintf("Complemento.Pagos.Pago[%d].MonedaP is required", i))
+				} else if pago.MonedaP == "MXN" {
+					if pago.TipoCambioP != "" && pago.TipoCambioP != "1" {
+						errs = append(errs, fmt.Sprintf("Complemento.Pagos.Pago[%d].TipoCambioP must be \"1\" when MonedaP is MXN", i))
+					}
+				} else if pago.TipoCambioP == "" {
+					errs = append(errs, fmt.Sprintf("Complemento.Pagos.Pago[%d].TipoCambioP is required when MonedaP is not MXN", i))
+				}
+			}
+		}
 	}
 
 	return len(errs) == 0, errs

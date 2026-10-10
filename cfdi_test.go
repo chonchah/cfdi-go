@@ -206,6 +206,7 @@ func TestGeneratePagoXML(t *testing.T) {
 		{"Totales element", func() bool { return strings.Contains(xmlOut, "pago20:Totales") }},
 		{"MontoTotalPagos", func() bool { return strings.Contains(xmlOut, `MontoTotalPagos="1160.00"`) }},
 		{"Pago element", func() bool { return strings.Contains(xmlOut, "pago20:Pago") }},
+		{"TipoCambioP defaults to 1 for MXN", func() bool { return strings.Contains(xmlOut, `TipoCambioP="1"`) }},
 		{"FechaPago", func() bool { return strings.Contains(xmlOut, `FechaPago="2026-07-15T14:25:00"`) }},
 		{"DoctoRelacionado element", func() bool { return strings.Contains(xmlOut, "pago20:DoctoRelacionado") }},
 		{"IdDocumento", func() bool { return strings.Contains(xmlOut, `IdDocumento="UUID-DE-LA-FACTURA-ORIGINAL-PPD"`) }},

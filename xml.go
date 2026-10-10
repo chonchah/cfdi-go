@@ -103,6 +103,15 @@ func (req *CFDIRequest) ParseCFDItoXML() string {
 
 	if req.TipoDeComprobante == "P" && req.Complemento != nil {
 		cfdiXML.Complemento = req.Complemento
+		// The SAT/PAC requires TipoCambioP="1" when the payment currency is
+		// MXN; default it so callers sending MXN without TipoCambioP still
+		// produce valid XML.
+		for i := range cfdiXML.Complemento.Pagos.Pago {
+			p := &cfdiXML.Complemento.Pagos.Pago[i]
+			if p.MonedaP == "MXN" && strings.TrimSpace(p.TipoCambioP) == "" {
+				p.TipoCambioP = "1"
+			}
+		}
 	}
 
 	xmlBytes, err := xml.MarshalIndent(cfdiXML, "", "  ")

@@ -144,6 +144,7 @@ type Pago struct {
 	FechaPago        string             `xml:"FechaPago,attr" json:"FechaPago"`
 	FormaDePagoP     string             `xml:"FormaDePagoP,attr" json:"FormaDePagoP"`
 	MonedaP          string             `xml:"MonedaP,attr" json:"MonedaP"`
+	TipoCambioP      string             `xml:"TipoCambioP,attr,omitempty" json:"TipoCambioP,omitempty"`
 	Monto            string             `xml:"Monto,attr" json:"Monto"`
 	DoctoRelacionado []DoctoRelacionado `xml:"pago20:DoctoRelacionado" json:"DoctoRelacionado"`
 }

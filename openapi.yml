@@ -107,6 +107,7 @@ paths:
                         - FechaPago: "2026-07-15T14:25:00"
                           FormaDePagoP: "03"
                           MonedaP: MXN
+                          TipoCambioP: "1"
                           Monto: "1160.00"
                           DoctoRelacionado:
                             - IdDocumento: UUID-DE-LA-FACTURA-ORIGINAL-PPD
@@ -472,6 +473,10 @@ components:
           type: string
           description: Moneda del pago
           example: MXN
+        TipoCambioP:
+          type: string
+          description: Tipo de cambio ("1" cuando MonedaP es MXN; requerido si es extranjera)
+          example: "1"
         Monto:
           type: string
           description: Monto del pago
