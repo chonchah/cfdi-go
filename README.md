@@ -3,6 +3,8 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/chonchah/cfdi-go.svg)](https://pkg.go.dev/github.com/chonchah/cfdi-go)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Go](https://img.shields.io/badge/Go-1.21+-blue.svg)](go.mod)
+![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/chonchah/cfdi-go/total)
+
 
 Dependencia-free (stdlib only) Go library for **Mexican electronic invoicing — CFDI 4.0 (SAT México)**. Build, validate and stamp CFDI documents.
 
